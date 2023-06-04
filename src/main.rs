@@ -50,19 +50,19 @@ pub fn levenshtein<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
 
 // Wrapper function for calculating distance based on NW-aligned sequences (returns edit distance only)
 pub fn needleman_wunsch<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
-    (_, _, edit_distance) = needleman_wunsch_with_alignments(x, y); 
+    (_, _, edit_distance) = needleman_wunsch_with_alignments(x, y);
     edit_distance
 }
 
-// Function for calculating calculating distance based on NW-aligned sequences (returns edit 
+// Function for calculating calculating distance based on NW-aligned sequences (returns edit
 // distance AND alignment associated with shortest edit distance)
 //
-// For now, in cases where there exist ties for the shortest edit distance, we only return 
-// one alignment 
+// For now, in cases where there exist ties for the shortest edit distance, we only return
+// one alignment
 //
 // When the scoring scheme is 0; 1; 1, the bottom right entry in the DP table for NW IS the edit distance
 // For now, I have a separate function which will calculate edit distance separately (with the 0; 1; 1)
-// scoring scheme, but that is unnecessary. I will ultimately get rid of it to eliminate redundant computation 
+// scoring scheme, but that is unnecessary. I will ultimately get rid of it to eliminate redundant computation
 // once the DP table calculations are cleaner
 pub fn needleman_wunsch_with_alignments<T: Number, U: Number>(x: &[T], y: &[T]) -> (&[T], &[T], U) {
     // Get sequence lengths
@@ -85,9 +85,8 @@ pub fn needleman_wunsch_with_alignments<T: Number, U: Number>(x: &[T], y: &[T]) 
     let edit_distance = calculate_edit_distance(aligned_seq_x, aligned_seq_y);
 
     // want to return edit distance ultimately
-    (aligned_seq_x, aligned_seq_y, edit_distance) 
+    (aligned_seq_x, aligned_seq_y, edit_distance)
 }
-
 
 #[cfg(test)]
 mod tests {

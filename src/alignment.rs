@@ -1,10 +1,8 @@
 use super::grid::Direction;
 use clam::core::number::Number;
 
-//have a function which returns a function in which gap is set to a user-defined parameter
-
-// revision of what was originally get_seq_char (now takes index as an argument)
-// by taking index as an argument, we remove code that is repeated for both sequence 1 and 2
+// Revision of what was originally get_seq_char (now takes index as an argument)
+// by taking index as an argument, we remove code that is repeated for both sequence x and y
 fn get_next_character<T: Number>(cell: usize, seq: &[T], index: usize) -> T {
     let gap = 0; //TODO: FIGURE THIS OUT
     let seq_char = if index < 0 {
@@ -16,14 +14,14 @@ fn get_next_character<T: Number>(cell: usize, seq: &[T], index: usize) -> T {
 }
 
 // Function to compute alignment
-fn first_alignment<'a>(
+fn first_alignment<'a, T: Number>(
     score_grid: &'a Vec<i32>,
     directions: &'a mut Vec<Direction>,
     seq1: &[T],
     seq2: &[T],
-) -> (Vec<char>, Vec<char>, Vec<Direction>) {
-    let mut aligned_seq1: Vec<char> = vec![];
-    let mut aligned_seq2: Vec<char> = vec![];
+) -> (Vec<T>, Vec<T>, Vec<Direction>) {
+    let mut aligned_seq1: Vec<T> = vec![];
+    let mut aligned_seq2: Vec<T> = vec![];
 
     // Save directions of alignment
     let mut alignment_directions: Vec<Direction> = vec![];
@@ -31,8 +29,8 @@ fn first_alignment<'a>(
 
     // Look for directions if cell is not 0
     while cell > 0 as i32 {
-        let seq1_index = ((cell - (cell % (seq2.len() + 1))) / (seq2.len() + 1)) - 1;
-        let seq2_index = (cell % (seq2.len() + 1)) - 1;
+        let seq1_index = ((cell - (cell % (seq2.len() as i32 + 1))) / (seq2.len() as i32 + 1)) - 1;
+        let seq2_index = (cell % (seq2.len() as i32 + 1)) - 1;
 
         let seq1_char = get_next_character(cell, seq1, seq1_index);
         let seq2_char = get_next_character(cell, seq2, seq2_index);
@@ -95,7 +93,8 @@ fn priv_best_alignment<'a>(
     let mut cell: i32 = score_grid.len() as i32 - 1;
     // Check if another sequence can be made
     while new_path_index != -1 {
-        // If no alignments have been found, no need to worry which directions have been fully traveled through, can call first alignment
+        // If no alignments have been found, no need to worry which directions have been fully traveled
+        // through, can call first alignment
         if aligned_seq1.len() == 0 {
             (
                 prev_aligned_seq1,
