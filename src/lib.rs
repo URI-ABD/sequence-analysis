@@ -1,1 +1,2 @@
-pub mod Needleman_Wunsch;
+pub mod alignment;
+pub mod grid;

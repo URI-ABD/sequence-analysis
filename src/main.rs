@@ -2,21 +2,10 @@
 use std::env;
 extern crate test;
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let algorithm = &args[1];
-    let seq1 = &args[2];
-    let seq2 = &args[3];
-    if algorithm == "Needleman-Wunsch" {
-        algorithms_lib::needleman_wunsch::align(seq1.to_string(), seq2.to_string());
-    } else if algorithm == "Smith-Waterman" {
-        algorithms_lib::smith_waterman::align(seq1.to_string(), seq2.to_string());
-    } else {
-        println!("Algorithm is unknown. Please run program again!");
-    }
+    println!("hello world");
 }
 
-
-// levenshtein function for reference 
+// Levenshtein function for reference
 pub fn levenshtein<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
     let (len_x, len_y) = (x.iter().count(), y.iter().count());
 
@@ -59,14 +48,26 @@ pub fn levenshtein<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
     }
 }
 
-// Function for calculating distance based on NW-aligned sequences (returns score only)
-// Note to self: This is sort of mimicking what is currently Emily's "align_no_print" fn
-// except that it is going to address the (sometimes inverse) relationship between
-// score and edit distance
+// Wrapper function for calculating distance based on NW-aligned sequences (returns edit distance only)
 pub fn needleman_wunsch<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
+    (_, _, edit_distance) = needleman_wunsch_with_alignments(x, y); 
+    edit_distance
+}
+
+// Function for calculating calculating distance based on NW-aligned sequences (returns edit 
+// distance AND alignment associated with shortest edit distance)
+//
+// For now, in cases where there exist ties for the shortest edit distance, we only return 
+// one alignment 
+//
+// When the scoring scheme is 0; 1; 1, the bottom right entry in the DP table for NW IS the edit distance
+// For now, I have a separate function which will calculate edit distance separately (with the 0; 1; 1)
+// scoring scheme, but that is unnecessary. I will ultimately get rid of it to eliminate redundant computation 
+// once the DP table calculations are cleaner
+pub fn needleman_wunsch_with_alignments<T: Number, U: Number>(x: &[T], y: &[T]) -> (&[T], &[T], U) {
     // Get sequence lengths
-    let len_x = x.iter().count();
-    let len_y = y.iter().count();
+    let len_x = x.len();
+    let len_y = y.len();
 
     // Create the grid
     // TODO: Edit create_grid function to work with references to slices of type T
@@ -75,8 +76,7 @@ pub fn needleman_wunsch<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
 
     // Build and print alignment
     // TODO: Edit build_best_alignment function to work with references to slices of type T
-    // instead of strings; this should be called something along the lines of
-    // "needleman_wunsch_with_alignments"
+    // instead of strings
     let (aligned_seq_x, aligned_seq_y) =
         alignment::build_best_alignment(&grid, &mut directions, x, y);
 
@@ -85,26 +85,9 @@ pub fn needleman_wunsch<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
     let edit_distance = calculate_edit_distance(aligned_seq_x, aligned_seq_y);
 
     // want to return edit distance ultimately
-    edit_distance
+    (aligned_seq_x, aligned_seq_y, edit_distance) 
 }
 
-// Function for calculating best NW-alignment sequences (returns score only)
-// I (Morgan) edited this so that the scoring scheme makes score align with edit 
-// distance 
-pub fn needleman_wunsch_with_alignments<T: Number, U: Number>(x: &[T], y: &[T]) -> () {
-    //Get the aligned sequences (just take 0th one) 
-
-    let mut distance = 0;
-    let len_x = x.iter().count();
-    for i in 0..len_x {
-        // Check for match and add 1 to score
-        if !(str_aligned_seq1.chars().nth(i) == str_aligned_seq2.chars().nth(i)) {
-            score = score + 1;
-        }
-    }
-}
-
-pub fn smith_waterman<T: Number, U: Number>(x: &[T], y: &[T]) -> U {}
 
 #[cfg(test)]
 mod tests {

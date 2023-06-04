@@ -1,45 +1,44 @@
 use super::grid::Direction;
+use clam::core::number::Number;
 
-// get sequence characters
-fn get_seq_char<'a>(cell: i32, seq1: &'a String, seq2: &'a String) -> (char, usize, char, usize) {
-    let seq1_char_index = ((cell - (cell % (seq2.len() as i32 + 1))) / (seq2.len() as i32 + 1)) - 1;
-    let seq2_char_index = (cell % (seq2.len() as i32 + 1)) - 1;
-    let seq1_char: char;
-    let seq2_char: char;
-    if seq1_char_index < 0 {
-        seq1_char = '-';
+//have a function which returns a function in which gap is set to a user-defined parameter
+
+// revision of what was originally get_seq_char (now takes index as an argument)
+// by taking index as an argument, we remove code that is repeated for both sequence 1 and 2
+fn get_next_character<T: Number>(cell: usize, seq: &[T], index: usize) -> T {
+    let gap = 0; //TODO: FIGURE THIS OUT
+    let seq_char = if index < 0 {
+        gap
     } else {
-        seq1_char = seq1.chars().nth(seq1_char_index as usize).unwrap();
-    }
-    if seq2_char_index < 0 {
-        seq2_char = '-';
-    } else {
-        seq2_char = seq2.chars().nth(seq2_char_index as usize).unwrap();
-    }
-    return (
-        seq1_char,
-        seq1_char_index as usize,
-        seq2_char,
-        seq2_char_index as usize,
-    );
+        seq.iter().nth(index as usize).unwrap()
+    };
+    return seq_char;
 }
 
+// Function to compute alignment
 fn first_alignment<'a>(
     score_grid: &'a Vec<i32>,
     directions: &'a mut Vec<Direction>,
-    seq1: String,
-    seq2: String,
+    seq1: &[T],
+    seq2: &[T],
 ) -> (Vec<char>, Vec<char>, Vec<Direction>) {
     let mut aligned_seq1: Vec<char> = vec![];
     let mut aligned_seq2: Vec<char> = vec![];
+
     // Save directions of alignment
     let mut alignment_directions: Vec<Direction> = vec![];
     let mut cell = score_grid.len() as i32 - 1;
+
     // Look for directions if cell is not 0
     while cell > 0 as i32 {
-        let (seq1_char, seq1_char_index, seq2_char, seq2_char_index) =
-            get_seq_char(cell, &seq1, &seq2);
-        // If the current direction index includes Diagonal, add the two corresponding characters to the sequence strings
+        let seq1_index = ((cell - (cell % (seq2.len() + 1))) / (seq2.len() + 1)) - 1;
+        let seq2_index = (cell % (seq2.len() + 1)) - 1;
+
+        let seq1_char = get_next_character(cell, seq1, seq1_index);
+        let seq2_char = get_next_character(cell, seq2, seq2_index);
+
+        // If the current direction index includes Diagonal,
+        // add the two corresponding characters to the sequence strings
         if (directions[cell as usize] == Direction::Diagonal)
             || (directions[cell as usize] == Direction::DiagonalLeft)
             || (directions[cell as usize] == Direction::DiagonalUp)
@@ -48,6 +47,7 @@ fn first_alignment<'a>(
             aligned_seq1.insert(0, seq1_char);
             aligned_seq2.insert(0, seq2_char);
             alignment_directions.push(Direction::Diagonal);
+
             // Move to the cell to the diagonally left of the current cell
             if (cell as i32 - seq2.len() as i32 - 2) as i32 >= 0 {
                 cell = cell - seq2.len() as i32 - 2;
@@ -58,9 +58,9 @@ fn first_alignment<'a>(
             || (directions[cell as usize] == Direction::UpLeft)
         {
             aligned_seq1.insert(0, seq1_char);
-            aligned_seq2.insert(0, '-');
+            aligned_seq2.insert(0, '-'); //TODO: fix to use new handling of gaps
             alignment_directions.push(Direction::Up);
-            if (cell as i32 - seq2.len() as i32 - 1) as i32 >= 0 && seq1_char_index >= 0 {
+            if (cell as i32 - seq2.len() as i32 - 1) as i32 >= 0 && seq1_index >= 0 {
                 cell = cell - seq2.len() as i32 - 1;
             }
         }
@@ -70,82 +70,12 @@ fn first_alignment<'a>(
             aligned_seq2.insert(0, seq2_char);
             alignment_directions.push(Direction::Left);
             // Move to the cell to the diagonally left of the current cell
-            if (cell - 1) as i32 >= 0 && seq2_char_index >= 0 {
+            if (cell - 1) as i32 >= 0 && seq2_index >= 0 {
                 cell = cell - 1;
             }
         }
     }
     return (aligned_seq1, aligned_seq2, alignment_directions);
-}
-
-//Checks if another path can be found
-fn is_new_path<'a>(
-    directions: &'a mut Vec<Direction>,
-    previous_alignment_directions: Vec<Direction>,
-    seq2: String,
-) -> (i32, i32) {
-    let mut index: i32 = 0;
-    let mut i: i32 = previous_alignment_directions.len() as i32 - 1;
-    let mut found_new_path: bool = false;
-    // Goes through the path of the most recent alignment to see if a new path can be made
-    while i >= 0 as i32 && (found_new_path == false) {
-        if previous_alignment_directions[i as usize] == Direction::Diagonal
-            && directions.len() > index as usize + seq2.len() + 2
-        {
-            println!("Index: {}", index);
-            if directions[index as usize + seq2.len() + 2] != Direction::Diagonal {
-                found_new_path = true;
-            }
-            index = index + seq2.len() as i32 + 2;
-        } else if previous_alignment_directions[i as usize] == Direction::Up
-            && directions.len() > index as usize + seq2.len() + 1
-        {
-            if (directions[index as usize + seq2.len() + 1] == Direction::DiagonalUpLeft)
-                || (directions[index as usize + seq2.len() + 1] == Direction::UpLeft)
-            {
-                found_new_path = true;
-            }
-            index = index + seq2.len() as i32 + 1;
-        } else if previous_alignment_directions[i as usize] == Direction::Left
-            && directions.len() > index as usize + 1
-        {
-            index = index + 1;
-        }
-        if !(found_new_path) {
-            i = i - 1;
-        }
-    }
-    // If there's no new paths, it returns 1
-    if !(found_new_path) {
-        i = -1;
-        index = 0;
-    }
-    // Else returns i and the index of the grid
-    return (i, index);
-}
-
-// Check if alignment was already found
-fn alignment_found<'a>(
-    aligned_seq1: &'a mut Vec<Vec<char>>,
-    aligned_seq2: &'a mut Vec<Vec<char>>,
-    new_aligned_seq1: Vec<char>,
-    new_aligned_seq2: Vec<char>,
-) -> bool {
-    let mut is_found: bool = false;
-    let seq1_1: String = new_aligned_seq1.to_vec().into_iter().collect();
-    let seq2_1: String = new_aligned_seq2.to_vec().into_iter().collect();
-    if (aligned_seq1.contains(&new_aligned_seq1)) && (aligned_seq2.contains(&new_aligned_seq2)) {
-        // Find the index of seq1 in the aligned_seq1 list
-        let mut seq_index: usize = 0;
-        while aligned_seq1[seq_index] != new_aligned_seq1 {
-            seq_index = seq_index + 1;
-        }
-        // Check if seq2 is in the same location
-        if aligned_seq2[seq_index] == new_aligned_seq2 {
-            is_found = true;
-        }
-    }
-    return is_found;
 }
 
 // Find best alignment
@@ -309,29 +239,21 @@ pub fn build_best_alignment<'a>(
     );
 }
 
-// Calculates the score
-pub fn score<'a>(str_aligned_seq1: &'a String, str_aligned_seq2: &'a String) -> i32 {
-    let mut score: i32 = 0;
-    for i in 0..str_aligned_seq1.len() {
-        // Check for match and add 1 to score
-        if str_aligned_seq1.chars().nth(i) == str_aligned_seq2.chars().nth(i) {
-            score = score + 1;
-        } else {
-            score = score - 1
+// Calculates the edit distance between two sequences.
+// THIS FUNCTION IS REDUNDANT-- you don't need to do this calculation if you
+// use the scoring scheme (0; 1; 1); you can just get it straight from the DP table
+// at an earlier step and avoid this additional computation.
+// I'll take it out later
+pub fn calculate_edit_distance<T: Number, U: Number>(
+    aligned_seq_x: &[T],
+    aligned_seq_y: &[T],
+) -> U {
+    let mut edit_distance: i32 = 0;
+    for i in 0..aligned_seq_x.len() {
+        // Check for gap or mismatch and add 1 to edit_distance
+        if !(aligned_seq_x.iter().nth(i) == aligned_seq_y.iter().nth(i)) {
+            edit_distance = edit_distance + 1;
         }
     }
-    return score;
-}
-
-// Prints all alignments
-pub fn print_alignments<'a>(
-    str_aligned_seq1: &'a Vec<String>,
-    str_aligned_seq2: &'a Vec<String>,
-    score: i32,
-) {
-    println!("Best Alignments:");
-    for i in 0..str_aligned_seq1.len() {
-        println!("{}      {}", str_aligned_seq1[i], str_aligned_seq2[i]);
-    }
-    println!("Score: {}", score)
+    U::from(edit_distance).unwrap()
 }
