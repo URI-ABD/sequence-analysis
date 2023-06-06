@@ -1,5 +1,63 @@
 use clam::core::number::Number;
 
+fn compute_distance_table<T: Number>(x: &[T], y: &[T])->Vec<Vec<usize>>{
+
+    let len_x = x.len();
+    let len_y = y.len();
+
+    if len_y > len_x {
+        return compute_distance_table(y, x)
+    }
+    else {
+
+        // Distance_table is vec of vecs (initially populated with zeros)
+        // Subvecs represent rows 
+        let mut distance_table = vec![vec![0; len_x]; len_y]; 
+
+        let gap_penalty = 1; 
+  
+        // Initialize top row and left column distance values 
+        for row in 0..(len_y+1){
+            distance_table[row][0] = gap_penalty*row; 
+        }
+
+        for column in 0..(len_x+1){
+            distance_table[0][column] = gap_penalty*column; 
+        }
+
+        // Set values for the body of the table 
+        for row in 1..(len_y + 1){
+
+            for col in 1..(len_x + 1){
+
+                let mismatch_penalty = if x[col-1] == y[row-1] {0} else {1};
+                let new_cell_value = [
+                    distance_table[row-1][col-1] + mismatch_penalty, 
+                    distance_table[row-1][col] + gap_penalty, 
+                    distance_table[row][col-1] + gap_penalty].into_iter().min().unwrap(); 
+
+                distance_table[row][col] = new_cell_value; 
+            }
+        }
+
+        distance_table
+
+    }
+
+}
+
+fn compute_edit_distance<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
+    let len_x = x.len();
+    let len_y = y.len();
+
+    U::from(compute_distance_table(x, y)[len_y][len_x]).unwrap()
+}
+
+
+
+
+
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Direction {
     Diagonal,
