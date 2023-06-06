@@ -39,7 +39,7 @@ fn max_cell_score<'a, T: Number>(
     seq_y: &[T],
     score_grid: &mut Vec<i32>,
     cell: &i32,
-    directions: &mut Vec<Direction>,
+    directions: &mut Vec<Direction>, //
 ) -> (Vec<i32>, Vec<Direction>) {
     // determine if location is a match
     if cell == &0 {

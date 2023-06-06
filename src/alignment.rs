@@ -3,17 +3,18 @@ use clam::core::number::Number;
 
 // Revision of what was originally get_seq_char (now takes index as an argument)
 // by taking index as an argument, we remove code that is repeated for both sequence x and y
-fn get_next_character<T: Number>(cell: usize, seq: &[T], index: usize) -> T {
+fn get_next_character<T: Number>(cell: i32, seq: &[T], index: i32) -> T {
     let gap = 0; //TODO: FIGURE THIS OUT
     let seq_char = if index < 0 {
-        gap
+        T::from(gap).unwrap() //TODO: FIGURE THIS OUT
     } else {
-        seq.iter().nth(index as usize).unwrap()
+        *seq.iter().nth(index as usize).unwrap()
     };
     return seq_char;
 }
 
 // Function to compute alignment
+// Verify that all lifetimes are necessary
 fn first_alignment<'a, T: Number>(
     score_grid: &'a Vec<i32>,
     directions: &'a mut Vec<Direction>,
