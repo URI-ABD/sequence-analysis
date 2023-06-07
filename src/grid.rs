@@ -1,24 +1,36 @@
 use clam::core::number::Number;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Direction {
+    Diagonal,
+    Up,
+    Left,
+    None,
+}
+
 // New function to compute the distance table using scoring scheme 0; 1; 1
-fn compute_distance_table<T: Number>(x: &[T], y: &[T]) -> Vec<Vec<usize>> {
+fn compute_tables<T: Number>(x: &[T], y: &[T]) -> (Vec<Vec<usize>>, Vec<Vec<Direction>>) {
     let len_x = x.len();
     let len_y = y.len();
 
-    // Distance_table is vec of vecs (initially populated with zeros)
-    // Subvecs represent rows
+    // Initializing tables; subvecs represent rows
     let mut distance_table = vec![vec![0; len_x]; len_y];
+    let mut direction_table = vec![vec![Direction::None; len_x]; len_y];
 
     let gap_penalty = 1;
 
     // Initialize top row and left column distance values
     for row in 0..(len_y + 1) {
         distance_table[row][0] = gap_penalty * row;
+        direction_table[row][0] = Direction::Up;
     }
 
     for column in 0..(len_x + 1) {
         distance_table[0][column] = gap_penalty * column;
+        direction_table[0][column] = Direction::Left;
     }
+
+    direction_table[0][0] = Direction::None;
 
     // Set values for the body of the table
     for row in 1..(len_y + 1) {
@@ -28,33 +40,27 @@ fn compute_distance_table<T: Number>(x: &[T], y: &[T]) -> Vec<Vec<usize>> {
             // of each sequence, so the dp table's indices are 1 higher than that of
             // the actual sequences
             let mismatch_penalty = if x[col - 1] == y[row - 1] { 0 } else { 1 };
-            let new_cell_value = [
+            let (new_cell_index, new_cell_value) = [
                 distance_table[row - 1][col - 1] + mismatch_penalty,
                 distance_table[row - 1][col] + gap_penalty,
                 distance_table[row][col - 1] + gap_penalty,
             ]
             .into_iter()
-            .min()
+            .enumerate()
+            .min_by(|x, y| x.1.cmp(&y.1))
             .unwrap();
 
             distance_table[row][col] = new_cell_value;
+            direction_table[row][col] = match new_cell_index {
+                0 => Direction::Diagonal,
+                1 => Direction::Up,
+                2 => Direction::Left,
+            }
         }
     }
 
-    distance_table
+    (distance_table, direction_table)
 }
-
-// #[derive(Clone, Copy, Debug, PartialEq)]
-// pub enum Direction {
-//     Diagonal,
-//     Up,
-//     Left,
-//     DiagonalUp,
-//     DiagonalLeft,
-//     UpLeft,
-//     DiagonalUpLeft,
-//     None,
-// }
 
 // // Creates grid from user entered sequences
 // pub fn create_grid<T: Number>(
