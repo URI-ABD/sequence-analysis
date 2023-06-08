@@ -26,6 +26,8 @@ pub fn needleman_wunsch_with_alignment<'a, T: Number, U: Number>(
     (alignment, U::from(edit_distance).unwrap())
 }
 
+
+// Public function for recurisve traceback to get alignment and edit distance (ignores ties for now)
 pub fn traceback_recursive<'a, T: Number>(
     distance_table: Vec<Vec<usize>>,
     unaligned_seqs: (&[T], &[T]),
