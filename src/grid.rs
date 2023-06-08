@@ -11,7 +11,7 @@ pub enum Direction {
 // New function to compute the distance and direction tables using scoring scheme 0; 1; 1
 // Need for direction table should become obsolete with this scoring scheme and recursive traceback
 // function, but I'm leaving it in for now
-fn compute_tables<T: Number>(x: &[T], y: &[T]) -> (Vec<Vec<usize>>, Vec<Vec<Direction>>) {
+pub fn compute_tables<T: Number>(x: &[T], y: &[T]) -> (Vec<Vec<usize>>, Vec<Vec<Direction>>) {
     let len_x = x.len();
     let len_y = y.len();
 
@@ -62,82 +62,6 @@ fn compute_tables<T: Number>(x: &[T], y: &[T]) -> (Vec<Vec<usize>>, Vec<Vec<Dire
     }
 
     (distance_table, direction_table)
-}
-
-// Returns a single alignment (disregards ties for best-scoring alignment)
-fn get_alignment_recursive<'a, T: Number>(
-    distance_table: Vec<Vec<i32>>,
-    row_index: usize,
-    column_index: usize,
-    unaligned_seqs: (&[T], &[T]),
-    aligned_seqs: (&'a [T], &'a [T]),
-) -> (&'a [T], &'a [T]) {
-    if row_index == 0 && column_index == 0 {
-        //base case
-        return aligned_seqs;
-    } else {
-        //general case
-       
-        let (unaligned_x, unaligned_y) = unaligned_seqs;
-        let (aligned_x, aligned_y) = aligned_seqs;
-
-        let gap_penalty = 1;
-        let mismatch_penalty = if unaligned_x[column_index - 1] == unaligned_y[row_index - 1] {
-            0
-        } else {
-            1
-        };
-        let (min_cell_index, min_cell_value) = [
-            distance_table[row_index - 1][column_index - 1] + mismatch_penalty,
-            distance_table[row_index - 1][column_index] + gap_penalty,
-            distance_table[row_index][column_index - 1] + gap_penalty,
-        ]
-        .into_iter()
-        .enumerate()
-        .min_by(|x, y| x.1.cmp(&y.1))
-        .unwrap();
-
-        let (updated_aligned_x, updated_aligned_y) = match min_cell_index {
-            0 => (
-                Some(unaligned_x[column_index - 1])
-                    .iter()
-                    .chain(aligned_x.iter())
-                    .collect(),
-                Some(unaligned_y[row_index - 1])
-                    .iter()
-                    .chain(aligned_y.iter())
-                    .collect()
-            ),
-            1 => (
-                Some(unaligned_x[column_index - 1])
-                    .iter()
-                    .chain(aligned_x.iter())
-                    .collect(),
-                Some(T::from('-' as u8).unwrap())
-                    .iter()
-                    .chain(aligned_y.iter())
-                    .collect()
-            ),
-            2 => (
-                Some(T::from('-' as u8).unwrap())
-                    .iter()
-                    .chain(aligned_x.iter())
-                    .collect(),
-                Some(unaligned_y[row_index - 1])
-                    .iter()
-                    .chain(aligned_y.iter())
-                    .collect()
-            ),
-        };
-
-        get_alignment(
-            distance_table,
-            row_index - 1,
-            column_index - 1,
-            (unaligned_x, unaligned_y),
-            (updated_aligned_x, updated_aligned_y),
-        )
-    }
 }
 
 // // Creates grid from user entered sequences
