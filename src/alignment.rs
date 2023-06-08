@@ -1,4 +1,5 @@
 use super::grid::compute_tables;
+use super::grid::Direction;
 use clam::core::number::Number;
 
 // Wrapper function for calculating distance based on NW-aligned sequences (returns edit distance only)
@@ -26,6 +27,41 @@ pub fn needleman_wunsch_with_alignment<'a, T: Number, U: Number>(
     (alignment, U::from(edit_distance).unwrap())
 }
 
+pub fn traceback_iterative<T: Number>(
+    directions_table: Vec<Vec<Direction>>,
+    unaligned_seqs: (&[T], &[T]),
+) -> (Vec<T>, Vec<T>) {
+    let mut row_index = directions_table.len() - 1;
+    let mut column_index = directions_table[0].len() - 1;
+
+    let (mut aligned_x, mut aligned_y) = (Vec::<T>::new(), Vec::<T>::new());
+    let (unaligned_x, unaligned_y) = unaligned_seqs;
+    let mut direction = directions_table[row_index][column_index];
+
+    // while !(row_index == 0 && column_index == 0) {
+       while direction != Direction::None {
+        match direction {
+            Direction::Diagonal => {
+                aligned_x.insert(0, unaligned_x[column_index - 1]);
+                aligned_y.insert(0, unaligned_y[row_index - 1]);
+            }
+            Direction::Left => {
+                aligned_x.insert(0, unaligned_x[column_index - 1]);
+                aligned_y.insert(0, T::from('-' as u8).unwrap());
+            }
+            Direction::Up => {
+                aligned_x.insert(0, T::from('-' as u8).unwrap());
+                aligned_y.insert(0, unaligned_y[row_index - 1]);
+            }
+            Direction::None => {}
+        }
+        row_index = row_index - 1;
+        column_index = column_index - 1;
+        direction = directions_table[row_index][column_index];
+    }
+
+    (aligned_x, aligned_y)
+}
 
 // Public function for recurisve traceback to get alignment and edit distance (ignores ties for now)
 pub fn traceback_recursive<'a, T: Number>(
@@ -91,7 +127,7 @@ fn _traceback_recursive<'a, T: Number>(
                     .iter()
                     .chain(aligned_y.iter())
                     .collect(),
-            ),
+            ), //diagonal
             1 => (
                 Some(unaligned_x[column_index - 1])
                     .iter()
@@ -101,7 +137,7 @@ fn _traceback_recursive<'a, T: Number>(
                     .iter()
                     .chain(aligned_y.iter())
                     .collect(),
-            ),
+            ), //left
             2 => (
                 Some(T::from('-' as u8).unwrap())
                     .iter()
@@ -111,7 +147,7 @@ fn _traceback_recursive<'a, T: Number>(
                     .iter()
                     .chain(aligned_y.iter())
                     .collect(),
-            ),
+            ), //up
         };
 
         _traceback_recursive(
@@ -123,10 +159,6 @@ fn _traceback_recursive<'a, T: Number>(
         )
     }
 }
-
-
-
-
 
 // // Revision of what was originally get_seq_char (now takes index as an argument)
 // // by taking index as an argument, we remove code that is repeated for both sequence x and y
