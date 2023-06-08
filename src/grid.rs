@@ -65,7 +65,7 @@ fn compute_tables<T: Number>(x: &[T], y: &[T]) -> (Vec<Vec<usize>>, Vec<Vec<Dire
 }
 
 // Returns a single alignment (disregards ties for best-scoring alignment)
-fn get_alignment<'a, T: Number>(
+fn get_alignment_recursive<'a, T: Number>(
     distance_table: Vec<Vec<i32>>,
     row_index: usize,
     column_index: usize,
@@ -77,9 +77,7 @@ fn get_alignment<'a, T: Number>(
         return aligned_seqs;
     } else {
         //general case
-        // let bottom_row = distance_table.len() - 1;
-        // let rightmost_column = distance_table[0].len() - 1;
-
+       
         let (unaligned_x, unaligned_y) = unaligned_seqs;
         let (aligned_x, aligned_y) = aligned_seqs;
 
@@ -99,38 +97,46 @@ fn get_alignment<'a, T: Number>(
         .min_by(|x, y| x.1.cmp(&y.1))
         .unwrap();
 
-        match min_cell_index {
-            0 => get_alignment(
-                distance_table,
-                row_index - 1,
-                column_index - 1,
-                (unaligned_x, unaligned_y),
-                (
-                    aligned_x.push(unaligned_x[column_index - 1]),
-                    aligned_y.push(unaligned_y[row_index - 1]),
-                ),
+        let (updated_aligned_x, updated_aligned_y) = match min_cell_index {
+            0 => (
+                Some(unaligned_x[column_index - 1])
+                    .iter()
+                    .chain(aligned_x.iter())
+                    .collect(),
+                Some(unaligned_y[row_index - 1])
+                    .iter()
+                    .chain(aligned_y.iter())
+                    .collect()
             ),
-            1 => get_alignment(
-                distance_table,
-                row_index,
-                column_index - 1,
-                (unaligned_x, unaligned_y),
-                (
-                    aligned_x.push(unaligned_x[column_index - 1]),
-                    aligned_y.push(T::from('-' as u8)),
-                ),
+            1 => (
+                Some(unaligned_x[column_index - 1])
+                    .iter()
+                    .chain(aligned_x.iter())
+                    .collect(),
+                Some(T::from('-' as u8).unwrap())
+                    .iter()
+                    .chain(aligned_y.iter())
+                    .collect()
             ),
-            2 => get_alignment(
-                distance_table,
-                row_index - 1,
-                column_index,
-                (unaligned_x, unaligned_y),
-                (
-                    aligned_x.push('-' as u8),
-                    aligned_y.push(unaligned_y[row_index - 1]),
-                ),
+            2 => (
+                Some(T::from('-' as u8).unwrap())
+                    .iter()
+                    .chain(aligned_x.iter())
+                    .collect(),
+                Some(unaligned_y[row_index - 1])
+                    .iter()
+                    .chain(aligned_y.iter())
+                    .collect()
             ),
-        }
+        };
+
+        get_alignment(
+            distance_table,
+            row_index - 1,
+            column_index - 1,
+            (unaligned_x, unaligned_y),
+            (updated_aligned_x, updated_aligned_y),
+        )
     }
 }
 
