@@ -1,11 +1,11 @@
-use super::grid::compute_tables;
+use super::grid::compute_table;
 use super::grid::Direction;
 use clam::core::number::Number;
 
 // Wrapper function for calculating distance based on NW-aligned sequences (returns edit distance only)
 pub fn needleman_wunsch<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
-    let (distance_table, _) = compute_tables(x, y);
-    let (_, edit_distance) = traceback_recursive(&distance_table, (x, y));
+    let table = compute_table(x, y);
+    let (_, edit_distance) = traceback_recursive(&table, (x, y));
 
     U::from(edit_distance).unwrap()
 }
@@ -21,25 +21,24 @@ pub fn needleman_wunsch_with_alignment<'a, T: Number, U: Number>(
     x: &'a [T],
     y: &'a [T],
 ) -> ((Vec<T>, Vec<T>), U) {
-    let (distance_table, _) = compute_tables(x, y);
-    let (alignment, edit_distance) = traceback_recursive(&distance_table, (x, y));
+    let table = compute_table(x, y);
+    let (alignment, edit_distance) = traceback_recursive(&table, (x, y));
 
     (alignment, U::from(edit_distance).unwrap())
 }
 
 pub fn traceback_iterative<T: Number>(
-    directions_table: &Vec<Vec<Direction>>,
+    table: &Vec<Vec<(usize, Direction)>>,
     unaligned_seqs: (&[T], &[T]),
 ) -> (Vec<T>, Vec<T>) {
-    let mut row_index = directions_table.len() - 1;
-    let mut column_index = directions_table[0].len() - 1;
+    let mut row_index = table.len() - 1;
+    let mut column_index = table[0].len() - 1;
 
     let (mut aligned_x, mut aligned_y) = (Vec::<T>::new(), Vec::<T>::new());
     let (unaligned_x, unaligned_y) = unaligned_seqs;
-    let mut direction = directions_table[row_index][column_index];
+    let mut direction = table[row_index][column_index].1;
 
-    // while !(row_index == 0 && column_index == 0) {
-       while direction != Direction::None {
+    while direction != Direction::None {
         match direction {
             Direction::Diagonal => {
                 aligned_x.insert(0, unaligned_x[column_index - 1]);
@@ -57,7 +56,7 @@ pub fn traceback_iterative<T: Number>(
         }
         row_index = row_index - 1;
         column_index = column_index - 1;
-        direction = directions_table[row_index][column_index];
+        direction = table[row_index][column_index].1;
     }
 
     (aligned_x, aligned_y)
@@ -65,75 +64,61 @@ pub fn traceback_iterative<T: Number>(
 
 // Public function for recurisve traceback to get alignment and edit distance (ignores ties for now)
 pub fn traceback_recursive<'a, T: Number>(
-    distance_table: &Vec<Vec<usize>>,
+    table: &Vec<Vec<(usize, Direction)>>,
     unaligned_seqs: (&[T], &[T]),
 ) -> ((Vec<T>, Vec<T>), usize) {
-    let row_index = distance_table.len() - 1;
-    let column_index = distance_table[0].len() - 1;
-
-    let edit_distance = distance_table[row_index][column_index];
+    let row_index = table.len() - 1;
+    let column_index = table[0].len() - 1;
 
     let alignment = _traceback_recursive(
-        &distance_table,
+        &table,
         row_index,
         column_index,
         unaligned_seqs,
         (Vec::new(), Vec::new()),
     );
 
+    let edit_distance = table[row_index][column_index].0;
+
     (alignment, edit_distance)
 }
 
 // Returns a single alignment (disregards ties for best-scoring alignment)
 fn _traceback_recursive<'a, T: Number>(
-    distance_table: &Vec<Vec<usize>>,
+    table: &Vec<Vec<(usize, Direction)>>,
     row_index: usize,
     column_index: usize,
     unaligned_seqs: (&[T], &[T]),
-    aligned_seqs: ( Vec<T>,  Vec<T>),
+    aligned_seqs: (Vec<T>, Vec<T>),
 ) -> (Vec<T>, Vec<T>) {
-    if row_index == 0 && column_index == 0 {
-        //base case
-        return aligned_seqs;
-    } else {
-        //general case
+    let (unaligned_x, unaligned_y) = unaligned_seqs;
+    let (mut aligned_x, mut aligned_y) = aligned_seqs;
 
-        let (unaligned_x, unaligned_y) = unaligned_seqs;
-        let (mut aligned_x, mut aligned_y) = aligned_seqs;
+    let direction = table[row_index][column_index].1;
 
-        let gap_penalty = 1;
-        let mismatch_penalty = if unaligned_x[column_index - 1] == unaligned_y[row_index - 1] {
-            0
-        } else {
-            1
-        };
-        let (min_cell_index, _) = [
-            distance_table[row_index - 1][column_index - 1] + mismatch_penalty,
-            distance_table[row_index - 1][column_index] + gap_penalty,
-            distance_table[row_index][column_index - 1] + gap_penalty,
-        ]
-        .into_iter()
-        .enumerate()
-        .min_by(|x, y| x.1.cmp(&y.1))
-        .unwrap();
+    match direction {
+        Direction::Diagonal => {
+            aligned_x.insert(0, unaligned_x[column_index - 1]);
+            aligned_y.insert(0, unaligned_y[row_index - 1]);
+        } //diagonal
+        Direction::Left => {
+            aligned_x.insert(0, unaligned_x[column_index - 1]);
+            aligned_y.insert(0, T::from(b'-').unwrap());
+        } //left
+        Direction::Up => {
+            aligned_x.insert(0, T::from(b'-').unwrap());
+            aligned_y.insert(0, unaligned_y[row_index - 1]);
+        }
+        Direction::None => return (aligned_x, aligned_y),
+    };
 
-        match min_cell_index {
-            0 => (aligned_x.insert(0, unaligned_x[column_index - 1]), 
-                  aligned_y.insert(0, unaligned_y[row_index - 1])), //diagonal
-            1 => (aligned_x.insert(0, unaligned_x[column_index - 1]), 
-                  aligned_y.insert(0, T::from('-' as u8).unwrap())), //left
-            2 => (aligned_x.insert(0, T::from('-' as u8).unwrap()), 
-                  aligned_y.insert(0, unaligned_y[row_index - 1])), //up
-        };
-
-        _traceback_recursive(
-            distance_table,
-            row_index - 1,
-            column_index - 1,
-            (unaligned_x, unaligned_y),
-            (aligned_x, aligned_y),
-        )
-    }
+    _traceback_recursive(
+        table,
+        row_index - 1,
+        column_index - 1,
+        (unaligned_x, unaligned_y),
+        (aligned_x, aligned_y),
+    )
 }
 
 // // Revision of what was originally get_seq_char (now takes index as an argument)

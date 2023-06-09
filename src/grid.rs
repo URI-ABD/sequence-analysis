@@ -11,28 +11,25 @@ pub enum Direction {
 // New function to compute the distance and direction tables using scoring scheme 0; 1; 1
 // Need for direction table should become obsolete with this scoring scheme and recursive traceback
 // function, but I'm leaving it in for now
-pub fn compute_tables<T: Number>(x: &[T], y: &[T]) -> (Vec<Vec<usize>>, Vec<Vec<Direction>>) {
+pub fn compute_table<T: Number>(x: &[T], y: &[T]) -> Vec<Vec<(usize, Direction)>> {
     let len_x = x.len();
     let len_y = y.len();
 
     // Initializing tables; subvecs represent rows
-    let mut distance_table = vec![vec![0; len_x]; len_y];
-    let mut direction_table = vec![vec![Direction::None; len_x]; len_y];
+    let mut table = vec![vec![(0, Direction::None); len_x]; len_y];
 
     let gap_penalty = 1;
 
     // Initialize top row and left column distance values
     for row in 0..(len_y + 1) {
-        distance_table[row][0] = gap_penalty * row;
-        direction_table[row][0] = Direction::Up;
+        table[row][0] = (gap_penalty * row, Direction::Up);
     }
 
     for column in 0..(len_x + 1) {
-        distance_table[0][column] = gap_penalty * column;
-        direction_table[0][column] = Direction::Left;
+        table[0][column] = (gap_penalty * column, Direction::Left);
     }
 
-    direction_table[0][0] = Direction::None;
+    table[0][0] = (table[0][0].0, Direction::None);
 
     // Set values for the body of the table
     for row in 1..(len_y + 1) {
@@ -42,26 +39,21 @@ pub fn compute_tables<T: Number>(x: &[T], y: &[T]) -> (Vec<Vec<usize>>, Vec<Vec<
             // of each sequence, so the dp tables' indices are 1 higher than that of
             // the actual sequences
             let mismatch_penalty = if x[col - 1] == y[row - 1] { 0 } else { 1 };
-            let (new_cell_index, new_cell_value) = [
-                distance_table[row - 1][col - 1] + mismatch_penalty,
-                distance_table[row - 1][col] + gap_penalty,
-                distance_table[row][col - 1] + gap_penalty,
+            let new_cell = [
+                table[row - 1][col - 1].0 + mismatch_penalty,
+                table[row - 1][col].0 + gap_penalty,
+                table[row][col - 1].0 + gap_penalty,
             ]
             .into_iter()
-            .enumerate()
-            .min_by(|x, y| x.1.cmp(&y.1))
+            .zip([Direction::Diagonal, Direction::Up, Direction::Left].into_iter())
+            .min_by(|x, y| x.0.cmp(&y.0))
             .unwrap();
 
-            distance_table[row][col] = new_cell_value;
-            direction_table[row][col] = match new_cell_index {
-                0 => Direction::Diagonal,
-                1 => Direction::Up,
-                2 => Direction::Left,
-            }
+            table[row][col] = new_cell;
         }
     }
 
-    (distance_table, direction_table)
+    table
 }
 
 // // Creates grid from user entered sequences
