@@ -17,9 +17,9 @@ distance AND alignment associated with shortest edit distance)
 For now, in cases where there exist ties for the shortest edit distance, we only return
 one alignment
 */
-pub fn needleman_wunsch_with_alignment<'a, T: Number, U: Number>(
-    x: &'a [T],
-    y: &'a [T],
+pub fn needleman_wunsch_with_alignment<T: Number, U: Number>(
+    x: &[T],
+    y: &[T],
 ) -> ((Vec<T>, Vec<T>), U) {
     let table = compute_table(x, y);
     let (alignment, edit_distance) = traceback_recursive(&table, (x, y));
@@ -44,19 +44,22 @@ pub fn traceback_iterative<T: Number>(
             Direction::Diagonal => {
                 aligned_x.insert(0, unaligned_x[column_index - 1]);
                 aligned_y.insert(0, unaligned_y[row_index - 1]);
+                row_index -= 1;
+                column_index -= 1;
             }
             Direction::Left => {
                 aligned_x.insert(0, unaligned_x[column_index - 1]);
                 aligned_y.insert(0, T::from(b'-').unwrap());
+                column_index -= 1;
             }
             Direction::Up => {
                 aligned_x.insert(0, T::from(b'-').unwrap());
                 aligned_y.insert(0, unaligned_y[row_index - 1]);
+                row_index -= 1;
             }
             Direction::None => {}
         }
-        row_index -= 1;
-        column_index -= 1;
+
         direction = table[row_index][column_index].1;
     }
 
@@ -68,19 +71,11 @@ pub fn traceback_recursive<T: Number>(
     table: &Vec<Vec<(usize, Direction)>>,
     unaligned_seqs: (&[T], &[T]),
 ) -> ((Vec<T>, Vec<T>), usize) {
+    let indices = (table.len() - 1, table[0].len() - 1);
 
-    let row_index = table.len() - 1;
-    let column_index = table[0].len() - 1;
+    let alignment = _traceback_recursive(table, indices, unaligned_seqs, (Vec::new(), Vec::new()));
 
-    let alignment = _traceback_recursive(
-        table,
-        row_index,
-        column_index,
-        unaligned_seqs,
-        (Vec::new(), Vec::new()),
-    );
-
-    let edit_distance = table[row_index][column_index].0;
+    let edit_distance = table[indices.0][indices.1].0;
 
     (alignment, edit_distance)
 }
@@ -88,13 +83,14 @@ pub fn traceback_recursive<T: Number>(
 // Private traceback recursive function. Returns a single alignment (disregards ties for best-scoring alignment)
 fn _traceback_recursive<T: Number>(
     table: &Vec<Vec<(usize, Direction)>>,
-    row_index: usize,
-    column_index: usize,
+    indices: (usize, usize),
     unaligned_seqs: (&[T], &[T]),
     aligned_seqs: (Vec<T>, Vec<T>),
 ) -> (Vec<T>, Vec<T>) {
     let (unaligned_x, unaligned_y) = unaligned_seqs;
     let (mut aligned_x, mut aligned_y) = aligned_seqs;
+
+    let (mut row_index, mut column_index) = indices;
 
     let direction = table[row_index][column_index].1;
 
@@ -102,280 +98,446 @@ fn _traceback_recursive<T: Number>(
         Direction::Diagonal => {
             aligned_x.insert(0, unaligned_x[column_index - 1]);
             aligned_y.insert(0, unaligned_y[row_index - 1]);
-        } //diagonal
+            row_index -= 1;
+            column_index -= 1;
+        }
         Direction::Left => {
+            println!("got here");
             aligned_x.insert(0, unaligned_x[column_index - 1]);
             aligned_y.insert(0, T::from(b'-').unwrap());
-        } //left
+            column_index -= 1;
+            println!(
+                "aligned x at this time: {:?}; aligned y at this time: {:?}",
+                &aligned_x, &aligned_y
+            );
+        }
         Direction::Up => {
+            println!("got here");
             aligned_x.insert(0, T::from(b'-').unwrap());
             aligned_y.insert(0, unaligned_y[row_index - 1]);
+            row_index -= 1;
+            println!(
+                "aligned x at this time: {:?}; aligned y at this time: {:?}",
+                &aligned_x, &aligned_y
+            );
         }
         Direction::None => return (aligned_x, aligned_y),
     };
 
     _traceback_recursive(
         table,
-        row_index - 1,
-        column_index - 1,
+        (row_index, column_index),
         (unaligned_x, unaligned_y),
         (aligned_x, aligned_y),
     )
 }
 
-// // Revision of what was originally get_seq_char (now takes index as an argument)
-// // by taking index as an argument, we remove code that is repeated for both sequence x and y
-// fn get_next_character<T: Number>(cell: i32, seq: &[T], index: i32) -> T {
-//     let gap = 0; //TODO: FIGURE THIS OUT
-//     let seq_char = if index < 0 {
-//         T::from(gap).unwrap() //TODO: FIGURE THIS OUT
-//     } else {
-//         *seq.iter().nth(index as usize).unwrap()
-//     };
-//     return seq_char;
-// }
+#[cfg(test)]
+mod tests {
+    use crate::alignment::needleman_wunsch;
+    use crate::alignment::traceback_iterative;
+    use crate::alignment::traceback_recursive;
+    use crate::grid::compute_table;
+    use crate::grid::Direction;
 
-// // Function to compute alignment
-// // Verify that all lifetimes are necessary
-// fn first_alignment<'a, T: Number>(
-//     score_grid: &'a Vec<i32>,
-//     directions: &'a mut Vec<Direction>,
-//     seq1: &[T],
-//     seq2: &[T],
-// ) -> (Vec<T>, Vec<T>, Vec<Direction>) {
-//     let mut aligned_seq1: Vec<T> = vec![];
-//     let mut aligned_seq2: Vec<T> = vec![];
+    #[test]
+    fn test_needleman_wunsch() {
+        let x_int = [0, 1, 2, 2, 1, 3, 4];
+        let y_int = [5, 1, 2, 2, 6, 3];
+        let nw_int: i32 = needleman_wunsch(&x_int, &y_int);
+        assert_eq!(nw_int, 3);
 
-//     // Save directions of alignment
-//     let mut alignment_directions: Vec<Direction> = vec![];
-//     let mut cell = score_grid.len() as i32 - 1;
+        let x_u8 = "NAJIBEATSPEPPERS".as_bytes();
+        let y_u8 = "NAJIBPEPPERSEATS".as_bytes();
+        let nw_u8: u8 = needleman_wunsch(x_u8, y_u8);
+        assert_eq!(nw_u8, 8);
 
-//     // Look for directions if cell is not 0
-//     while cell > 0 as i32 {
-//         let seq1_index = ((cell - (cell % (seq2.len() as i32 + 1))) / (seq2.len() as i32 + 1)) - 1;
-//         let seq2_index = (cell % (seq2.len() as i32 + 1)) - 1;
+        let x = "NOTGUILTY".as_bytes();
+        let y = "NOTGUILTY".as_bytes();
+        let nw: u8 = needleman_wunsch(x, y);
+        assert_eq!(nw, 0);
+    }
 
-//         let seq1_char = get_next_character(cell, seq1, seq1_index);
-//         let seq2_char = get_next_character(cell, seq2, seq2_index);
+    #[test]
+    fn test_compute_table() {
+        let x_u8 = "NAJIBPEPPERSEATS".as_bytes();
+        let y_u8 = "NAJIBEATSPEPPERS".as_bytes();
+        let table = compute_table(x_u8, y_u8);
+        assert_eq!(
+            table,
+            [
+                [
+                    (0, Direction::None),
+                    (1, Direction::None),
+                    (2, Direction::None),
+                    (3, Direction::None),
+                    (4, Direction::None),
+                    (5, Direction::None),
+                    (6, Direction::None),
+                    (7, Direction::None),
+                    (8, Direction::None),
+                    (9, Direction::None),
+                    (10, Direction::None),
+                    (11, Direction::None),
+                    (12, Direction::None),
+                    (13, Direction::None),
+                    (14, Direction::None),
+                    (15, Direction::None),
+                    (16, Direction::None)
+                ],
+                [
+                    (1, Direction::None),
+                    (0, Direction::Diagonal),
+                    (1, Direction::Left),
+                    (2, Direction::Left),
+                    (3, Direction::Left),
+                    (4, Direction::Left),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Left),
+                    (8, Direction::Left),
+                    (9, Direction::Left),
+                    (10, Direction::Left),
+                    (11, Direction::Left),
+                    (12, Direction::Left),
+                    (13, Direction::Left),
+                    (14, Direction::Left),
+                    (15, Direction::Left)
+                ],
+                [
+                    (2, Direction::None),
+                    (1, Direction::Up),
+                    (0, Direction::Diagonal),
+                    (1, Direction::Left),
+                    (2, Direction::Left),
+                    (3, Direction::Left),
+                    (4, Direction::Left),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Left),
+                    (8, Direction::Left),
+                    (9, Direction::Left),
+                    (10, Direction::Left),
+                    (11, Direction::Left),
+                    (12, Direction::Diagonal),
+                    (13, Direction::Left),
+                    (14, Direction::Left)
+                ],
+                [
+                    (3, Direction::None),
+                    (2, Direction::Up),
+                    (1, Direction::Up),
+                    (0, Direction::Diagonal),
+                    (1, Direction::Left),
+                    (2, Direction::Left),
+                    (3, Direction::Left),
+                    (4, Direction::Left),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Left),
+                    (8, Direction::Left),
+                    (9, Direction::Left),
+                    (10, Direction::Left),
+                    (11, Direction::Left),
+                    (12, Direction::Left),
+                    (13, Direction::Left)
+                ],
+                [
+                    (4, Direction::None),
+                    (3, Direction::Up),
+                    (2, Direction::Up),
+                    (1, Direction::Up),
+                    (0, Direction::Diagonal),
+                    (1, Direction::Left),
+                    (2, Direction::Left),
+                    (3, Direction::Left),
+                    (4, Direction::Left),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Left),
+                    (8, Direction::Left),
+                    (9, Direction::Left),
+                    (10, Direction::Left),
+                    (11, Direction::Left),
+                    (12, Direction::Left)
+                ],
+                [
+                    (5, Direction::None),
+                    (4, Direction::Up),
+                    (3, Direction::Up),
+                    (2, Direction::Up),
+                    (1, Direction::Up),
+                    (0, Direction::Diagonal),
+                    (1, Direction::Left),
+                    (2, Direction::Left),
+                    (3, Direction::Left),
+                    (4, Direction::Left),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Left),
+                    (8, Direction::Left),
+                    (9, Direction::Left),
+                    (10, Direction::Left),
+                    (11, Direction::Left)
+                ],
+                [
+                    (6, Direction::None),
+                    (5, Direction::Up),
+                    (4, Direction::Up),
+                    (3, Direction::Up),
+                    (2, Direction::Up),
+                    (1, Direction::Up),
+                    (1, Direction::Diagonal),
+                    (1, Direction::Diagonal),
+                    (2, Direction::Left),
+                    (3, Direction::Left),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Left),
+                    (9, Direction::Left),
+                    (10, Direction::Left)
+                ],
+                [
+                    (7, Direction::None),
+                    (6, Direction::Up),
+                    (5, Direction::Diagonal),
+                    (4, Direction::Up),
+                    (3, Direction::Up),
+                    (2, Direction::Up),
+                    (2, Direction::Diagonal),
+                    (2, Direction::Diagonal),
+                    (2, Direction::Diagonal),
+                    (3, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (6, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Left),
+                    (9, Direction::Left)
+                ],
+                [
+                    (8, Direction::None),
+                    (7, Direction::Up),
+                    (6, Direction::Up),
+                    (5, Direction::Up),
+                    (4, Direction::Up),
+                    (3, Direction::Up),
+                    (3, Direction::Diagonal),
+                    (3, Direction::Diagonal),
+                    (3, Direction::Diagonal),
+                    (3, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (6, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Left)
+                ],
+                [
+                    (9, Direction::None),
+                    (8, Direction::Up),
+                    (7, Direction::Up),
+                    (6, Direction::Up),
+                    (5, Direction::Up),
+                    (4, Direction::Up),
+                    (4, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (6, Direction::Left),
+                    (7, Direction::Left),
+                    (8, Direction::Up),
+                    (7, Direction::Diagonal)
+                ],
+                [
+                    (10, Direction::None),
+                    (9, Direction::Up),
+                    (8, Direction::Up),
+                    (7, Direction::Up),
+                    (6, Direction::Up),
+                    (5, Direction::Up),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (6, Direction::Diagonal),
+                    (6, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Diagonal),
+                    (8, Direction::Up)
+                ],
+                [
+                    (11, Direction::None),
+                    (10, Direction::Up),
+                    (9, Direction::Up),
+                    (8, Direction::Up),
+                    (7, Direction::Up),
+                    (6, Direction::Up),
+                    (5, Direction::Up),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Up),
+                    (5, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Left),
+                    (6, Direction::Diagonal),
+                    (6, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Diagonal),
+                    (9, Direction::Diagonal)
+                ],
+                [
+                    (12, Direction::None),
+                    (11, Direction::Up),
+                    (10, Direction::Up),
+                    (9, Direction::Up),
+                    (8, Direction::Up),
+                    (7, Direction::Up),
+                    (6, Direction::Diagonal),
+                    (5, Direction::Up),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Diagonal),
+                    (5, Direction::Up),
+                    (5, Direction::Diagonal),
+                    (6, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Diagonal),
+                    (9, Direction::Diagonal)
+                ],
+                [
+                    (13, Direction::None),
+                    (12, Direction::Up),
+                    (11, Direction::Up),
+                    (10, Direction::Up),
+                    (9, Direction::Up),
+                    (8, Direction::Up),
+                    (7, Direction::Diagonal),
+                    (6, Direction::Up),
+                    (5, Direction::Diagonal),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Left),
+                    (6, Direction::Diagonal),
+                    (6, Direction::Diagonal),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Diagonal),
+                    (8, Direction::Diagonal),
+                    (9, Direction::Diagonal)
+                ],
+                [
+                    (14, Direction::None),
+                    (13, Direction::Up),
+                    (12, Direction::Up),
+                    (11, Direction::Up),
+                    (10, Direction::Up),
+                    (9, Direction::Up),
+                    (8, Direction::Up),
+                    (7, Direction::Diagonal),
+                    (6, Direction::Up),
+                    (5, Direction::Up),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (6, Direction::Diagonal),
+                    (7, Direction::Left),
+                    (8, Direction::Left),
+                    (9, Direction::Diagonal)
+                ],
+                [
+                    (15, Direction::None),
+                    (14, Direction::Up),
+                    (13, Direction::Up),
+                    (12, Direction::Up),
+                    (11, Direction::Up),
+                    (10, Direction::Up),
+                    (9, Direction::Up),
+                    (8, Direction::Up),
+                    (7, Direction::Up),
+                    (6, Direction::Up),
+                    (5, Direction::Up),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Diagonal),
+                    (8, Direction::Diagonal),
+                    (9, Direction::Diagonal)
+                ],
+                [
+                    (16, Direction::None),
+                    (15, Direction::Up),
+                    (14, Direction::Up),
+                    (13, Direction::Up),
+                    (12, Direction::Up),
+                    (11, Direction::Up),
+                    (10, Direction::Up),
+                    (9, Direction::Up),
+                    (8, Direction::Up),
+                    (7, Direction::Up),
+                    (6, Direction::Up),
+                    (5, Direction::Up),
+                    (4, Direction::Diagonal),
+                    (5, Direction::Left),
+                    (6, Direction::Left),
+                    (7, Direction::Left),
+                    (8, Direction::Diagonal)
+                ]
+            ]
+        );
+    }
 
-//         // If the current direction index includes Diagonal,
-//         // add the two corresponding characters to the sequence strings
-//         if (directions[cell as usize] == Direction::Diagonal)
-//             || (directions[cell as usize] == Direction::DiagonalLeft)
-//             || (directions[cell as usize] == Direction::DiagonalUp)
-//             || (directions[cell as usize] == Direction::DiagonalUpLeft)
-//         {
-//             aligned_seq1.insert(0, seq1_char);
-//             aligned_seq2.insert(0, seq2_char);
-//             alignment_directions.push(Direction::Diagonal);
+    #[test]
+    fn test_traceback_recursive() {
+        let x_u8 = "NAJIBPEPPERSEATS".as_bytes();
+        let y_u8 = "NAJIBEATSPEPPERS".as_bytes();
+        let table1: Vec<Vec<(usize, crate::grid::Direction)>> = compute_table(x_u8, y_u8);
+        let nw_u8 = traceback_recursive(&table1, (x_u8, y_u8));
+        assert_eq!(
+            nw_u8,
+            (
+                (
+                    [78, 65, 74, 73, 66, 45, 80, 69, 80, 80, 69, 82, 83, 69, 65, 84, 83].to_vec(),
+                    [78, 65, 74, 73, 66, 69, 65, 84, 83, 80, 69, 80, 80, 69, 45, 82, 83].to_vec()
+                ),
+                8
+            )
+        );
 
-//             // Move to the cell to the diagonally left of the current cell
-//             if (cell as i32 - seq2.len() as i32 - 2) as i32 >= 0 {
-//                 cell = cell - seq2.len() as i32 - 2;
-//             }
-//         }
-//         // If the current direction index includes Up, add a gap to the first sequence and the corresponding character to the second sequence
-//         else if (directions[cell as usize] == Direction::Up)
-//             || (directions[cell as usize] == Direction::UpLeft)
-//         {
-//             aligned_seq1.insert(0, seq1_char);
-//             aligned_seq2.insert(0, '-'); //TODO: fix to use new handling of gaps
-//             alignment_directions.push(Direction::Up);
-//             if (cell as i32 - seq2.len() as i32 - 1) as i32 >= 0 && seq1_index >= 0 {
-//                 cell = cell - seq2.len() as i32 - 1;
-//             }
-//         }
-//         // If the current direction index includes Left, add the corresponing character to the second sequence and a gap to the second sequence
-//         else if directions[cell as usize] == Direction::Left {
-//             aligned_seq1.insert(0, '-');
-//             aligned_seq2.insert(0, seq2_char);
-//             alignment_directions.push(Direction::Left);
-//             // Move to the cell to the diagonally left of the current cell
-//             if (cell - 1) as i32 >= 0 && seq2_index >= 0 {
-//                 cell = cell - 1;
-//             }
-//         }
-//     }
-//     return (aligned_seq1, aligned_seq2, alignment_directions);
-// }
+        let x = "NOTGUILTY".as_bytes();
+        let y = "NOTGUILTY".as_bytes();
+        let table2: Vec<Vec<(usize, crate::grid::Direction)>> = compute_table(x, y);
+        let nw = traceback_recursive(&table2, (x, y));
+        assert_eq!(
+            nw,
+            (
+                (
+                    [78, 79, 84, 71, 85, 73, 76, 84, 89].to_vec(),
+                    [78, 79, 84, 71, 85, 73, 76, 84, 89].to_vec()
+                ),
+                0
+            )
+        );
+    }
 
-// // Find best alignment
-// fn priv_best_alignment<'a>(
-//     score_grid: &'a Vec<i32>,
-//     directions: &'a mut Vec<Direction>,
-//     seq1: String,
-//     seq2: String,
-//     aligned_seq1: &'a mut Vec<Vec<char>>,
-//     aligned_seq2: &'a mut Vec<Vec<char>>,
-// ) -> (Vec<String>, Vec<String>) {
-//     let mut new_path_index: i32 = 0;
-//     let mut grid_index: i32 = -1;
-//     let mut prev_aligned_seq1: Vec<char> = vec![];
-//     let mut prev_aligned_seq2: Vec<char> = vec![];
-//     let mut prev_aligned_directions: Vec<Direction> = vec![];
-//     let mut cell: i32 = score_grid.len() as i32 - 1;
-//     // Check if another sequence can be made
-//     while new_path_index != -1 {
-//         // If no alignments have been found, no need to worry which directions have been fully traveled
-//         // through, can call first alignment
-//         if aligned_seq1.len() == 0 {
-//             (
-//                 prev_aligned_seq1,
-//                 prev_aligned_seq2,
-//                 prev_aligned_directions,
-//             ) = first_alignment(score_grid, directions, seq1.clone(), seq2.clone());
-//             aligned_seq1.push(prev_aligned_seq1.clone());
-//             aligned_seq2.push(prev_aligned_seq2.clone());
-//             (new_path_index, grid_index) =
-//                 is_new_path(directions, prev_aligned_directions.clone(), seq2.clone());
-//         } else {
-//             let mut new_aligned_seq1: Vec<char> = vec![];
-//             let mut new_aligned_seq2: Vec<char> = vec![];
-//             let mut new_aligned_directions: Vec<Direction> = vec![];
-//             //copy the beggining of recent alignment into the new alignment
-//             let mut aligned_index = aligned_seq1[aligned_seq1.len() - 1].len() - 1;
-//             prev_aligned_seq1 = aligned_seq1[aligned_seq1.len() - 1].clone();
-//             prev_aligned_seq2 = aligned_seq2[aligned_seq2.len() - 1].clone();
-//             for i in 0..new_path_index {
-//                 new_aligned_seq1.insert(0, prev_aligned_seq1[aligned_index]);
-//                 new_aligned_seq2.insert(0, prev_aligned_seq2[aligned_index]);
-//                 new_aligned_directions.push(prev_aligned_directions[i as usize]);
-//                 aligned_index = aligned_index - 1;
-//             }
-//             // Add new part of sequence
-//             let seq1_1: String = new_aligned_seq1.to_vec().into_iter().collect();
-//             let seq2_1: String = new_aligned_seq2.to_vec().into_iter().collect();
-//             let (seq1_char, seq1_char_index, seq2_char, seq2_char_index) =
-//                 get_seq_char(grid_index, &seq1, &seq2.clone());
-//             // Choose the new direction
-//             if (directions[grid_index as usize] == Direction::DiagonalUp
-//                 || directions[grid_index as usize] == Direction::DiagonalUpLeft)
-//                 && prev_aligned_directions[new_path_index as usize] == Direction::Diagonal
-//             {
-//                 new_aligned_seq2.insert(0, '-');
-//                 new_aligned_seq1.insert(0, seq1_char);
-//                 new_aligned_directions.push(Direction::Up);
-//                 if (grid_index as i32 - seq2.len() as i32 - 1) as i32 >= 0 && seq1_char_index > 0 {
-//                     grid_index = grid_index - seq2.len() as i32 - 1;
-//                 }
-//             } else if (directions[grid_index as usize] == Direction::DiagonalLeft
-//                 && prev_aligned_directions[new_path_index as usize] == Direction::Diagonal)
-//                 || ((directions[grid_index as usize] == Direction::DiagonalUpLeft
-//                     || directions[grid_index as usize] == Direction::UpLeft)
-//                     && prev_aligned_directions[new_path_index as usize] == Direction::Up)
-//             {
-//                 new_aligned_seq1.insert(0, '-');
-//                 new_aligned_seq2.insert(0, seq2_char);
-//                 new_aligned_directions.push(Direction::Left);
-//                 if (grid_index - 1) as i32 >= 0 && seq2_char_index > 0 {
-//                     grid_index = grid_index - 1;
-//                 }
-//             }
-//             // Finish alignment
-//             while new_aligned_seq1.len() < prev_aligned_seq1.len() {
-//                 let (seq1_char, seq1_char_index, seq2_char, seq2_char_index) =
-//                     get_seq_char(grid_index, &seq1, &seq2);
-//                 // If the current direction index includes Diagonal, add the two corresponding characters to the sequence strings
-//                 if (directions[grid_index as usize] == Direction::Diagonal)
-//                     || (directions[grid_index as usize] == Direction::DiagonalLeft)
-//                     || (directions[grid_index as usize] == Direction::DiagonalUp)
-//                     || (directions[grid_index as usize] == Direction::DiagonalUpLeft)
-//                 {
-//                     new_aligned_seq1.insert(0, seq1_char);
-//                     new_aligned_seq2.insert(0, seq2_char);
-//                     new_aligned_directions.push(Direction::Diagonal);
-//                     // Move to the cell to the diagonally left of the current cell
-//                     if (grid_index as i32 - seq2.len() as i32 - 2) as i32 >= 0 {
-//                         grid_index = grid_index - seq2.len() as i32 - 2;
-//                     }
-//                 }
-//                 // If the current direction index includes Up, add a gap to the first sequence and the corresponding character to the second sequence
-//                 else if (directions[grid_index as usize] == Direction::Up)
-//                     || (directions[grid_index as usize] == Direction::UpLeft)
-//                 {
-//                     new_aligned_seq1.insert(0, seq1_char);
-//                     new_aligned_seq2.insert(0, '-');
-//                     new_aligned_directions.push(Direction::Up);
-//                     if (grid_index as i32 - seq2.len() as i32 - 1) as i32 >= 0
-//                         && seq1_char_index > 0
-//                     {
-//                         grid_index = grid_index - seq2.len() as i32 - 1;
-//                     }
-//                 }
-//                 // If the current direction index includes Left, add the corresponing character to the second sequence and a gap to the second sequence
-//                 else if directions[grid_index as usize] == Direction::Left {
-//                     new_aligned_seq1.insert(0, '-');
-//                     new_aligned_seq2.insert(0, seq2_char);
-//                     new_aligned_directions.push(Direction::Left);
-//                     // Move to the cell to the diagonally left of the current cell
-//                     if (grid_index - 1) as i32 >= 0 && seq2_char_index > 0 {
-//                         grid_index = grid_index - 1;
-//                     }
-//                 }
-//             }
-//             //Append new alignment and check for more
-//             if !(alignment_found(
-//                 aligned_seq1,
-//                 aligned_seq2,
-//                 new_aligned_seq1.clone(),
-//                 new_aligned_seq2.clone(),
-//             )) {
-//                 aligned_seq1.append(&mut vec![new_aligned_seq1.clone()]);
-//                 aligned_seq2.append(&mut vec![new_aligned_seq2.clone()]);
-//                 let seq1_2: String = new_aligned_seq1.to_vec().into_iter().collect();
-//                 let seq2_2: String = new_aligned_seq2.to_vec().into_iter().collect();
-//                 println!("{}", aligned_seq1.len());
-//                 (new_path_index, grid_index) =
-//                     is_new_path(directions, new_aligned_directions.clone(), seq2.clone());
-//             }
-//             prev_aligned_directions = new_aligned_directions.clone();
-//         }
-//     }
-//     // Base case: Turn finished aligned sequences into strings and return them
-//     let mut str_aligned_seq1: Vec<String> = vec![];
-//     let mut str_aligned_seq2: Vec<String> = vec![];
-//     for i in 0..aligned_seq1.len() {
-//         //let sequence1: String = ;
-//         str_aligned_seq1.append(&mut vec![aligned_seq1[i].to_vec().into_iter().collect()]);
-//         str_aligned_seq2.append(&mut vec![aligned_seq2[i].to_vec().into_iter().collect()]);
-//     }
-//     return (str_aligned_seq1, str_aligned_seq2);
-// }
-
-// // Find best alignment
-// pub fn build_best_alignment<'a>(
-//     score_grid: &'a Vec<i32>,
-//     directions: &'a mut Vec<Direction>,
-//     seq1: String,
-//     seq2: String,
-// ) -> (Vec<String>, Vec<String>) {
-//     let mut aligned_sequence1: Vec<Vec<char>> = vec![];
-//     let mut aligned_sequence2: Vec<Vec<char>> = vec![];
-//     return priv_best_alignment(
-//         score_grid,
-//         directions,
-//         seq1,
-//         seq2,
-//         &mut aligned_sequence1,
-//         &mut aligned_sequence2,
-//     );
-// }
-
-// // Calculates the edit distance between two sequences.
-// // THIS FUNCTION IS REDUNDANT-- you don't need to do this calculation if you
-// // use the scoring scheme (0; 1; 1); you can just get it straight from the DP table
-// // at an earlier step and avoid this additional computation.
-// // I'll take it out later
-// pub fn calculate_edit_distance<T: Number, U: Number>(
-//     aligned_seq_x: &[T],
-//     aligned_seq_y: &[T],
-// ) -> U {
-//     let mut edit_distance: i32 = 0;
-//     for i in 0..aligned_seq_x.len() {
-//         // Check for gap or mismatch and add 1 to edit_distance
-//         if !(aligned_seq_x.iter().nth(i) == aligned_seq_y.iter().nth(i)) {
-//             edit_distance = edit_distance + 1;
-//         }
-//     }
-//     U::from(edit_distance).unwrap()
-// }
+    #[test]
+    fn test_traceback_iterative() {
+        let x_u8 = "NAJIBPEPPERSEATS".as_bytes();
+        let y_u8 = "NAJIBEATSPEPPERS".as_bytes();
+        let table1: Vec<Vec<(usize, crate::grid::Direction)>> = compute_table(x_u8, y_u8);
+        let nw_u8 = traceback_iterative(&table1, (x_u8, y_u8));
+        assert_eq!(
+            nw_u8,
+            (
+                [78, 65, 74, 73, 66, 45, 80, 69, 80, 80, 69, 82, 83, 69, 65, 84, 83].to_vec(),
+                [78, 65, 74, 73, 66, 69, 65, 84, 83, 80, 69, 80, 80, 69, 45, 82, 83].to_vec()
+            ),
+        );
+    }
+}

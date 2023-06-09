@@ -14,20 +14,18 @@ pub fn compute_table<T: Number>(x: &[T], y: &[T]) -> Vec<Vec<(usize, Direction)>
     let len_y = y.len();
 
     // Initializing table; subvecs represent rows
-    let mut table = vec![vec![(0, Direction::None); len_x]; len_y];
+    let mut table = vec![vec![(0, Direction::None); len_x + 1]; len_y + 1];
 
     let gap_penalty = 1;
 
     // Initialize top row and left column distance values
     for row in 0..(len_y + 1) {
-        table[row][0] = (gap_penalty * row, Direction::Up);
+        table[row][0] = (gap_penalty * row, Direction::None);
     }
 
     for column in 0..(len_x + 1) {
-        table[0][column] = (gap_penalty * column, Direction::Left);
+        table[0][column] = (gap_penalty * column, Direction::None);
     }
-
-    table[0][0] = (table[0][0].0, Direction::None);
 
     // Set values for the body of the table
     for row in 1..(len_y + 1) {
@@ -53,4 +51,3 @@ pub fn compute_table<T: Number>(x: &[T], y: &[T]) -> Vec<Vec<(usize, Direction)>
 
     table
 }
-
