@@ -1,11 +1,37 @@
-use super::grid::compute_table;
+use super::grid::compute_nw_table;
 use super::grid::Direction;
 use clam::core::number::Number;
 
+pub enum Edit<T: Number> {
+    Deletion(usize),
+    Insertion(usize, T),
+    Substitution(usize, T),
+}
+
+// Given an alignement of two sequences, returns the set of edits needed to turn sequence
+// x into sequence y
+pub fn alignment_to_edits<T: Number>(aligned_x: &Vec<T>, aligned_y: &Vec<T>) -> Vec<Edit<T>> {
+    aligned_x
+        .iter()
+        .zip(aligned_y.iter())
+        .filter(|(x, y)| x != y)
+        .enumerate()
+        .map(|(index, (x, y))| {
+            if *x == T::from(b'-').unwrap() {
+                Edit::Insertion(index, *y)
+            } else if *y == T::from(b'-').unwrap() {
+                Edit::Deletion(index)
+            } else {
+                Edit::Substitution(index, *y)
+            }
+        })
+        .collect()
+}
+
 // Wrapper function for calculating distance based on NW-aligned sequences (returns edit distance only)
 pub fn needleman_wunsch<T: Number, U: Number>(x: &[T], y: &[T]) -> U {
-    let table = compute_table(x, y);
-    let (_, edit_distance) = traceback_recursive(&table, (x, y));
+    let table = compute_nw_table(x, y);
+    let edit_distance: usize = table[table.len() - 1][table[0].len() - 1].0;
 
     U::from(edit_distance).unwrap()
 }
@@ -17,14 +43,22 @@ distance AND alignment associated with shortest edit distance)
 For now, in cases where there exist ties for the shortest edit distance, we only return
 one alignment
 */
-pub fn needleman_wunsch_with_alignment<T: Number, U: Number>(
+pub fn needleman_wunsch_with_edits<T: Number, U: Number>(
     x: &[T],
     y: &[T],
-) -> ((Vec<T>, Vec<T>), U) {
-    let table = compute_table(x, y);
-    let (alignment, edit_distance) = traceback_recursive(&table, (x, y));
+) -> ((Vec<Edit<T>>, Vec<Edit<T>>), U) {
+    let table = compute_nw_table(x, y);
+    let (aligned_x, aligned_y) = traceback_recursive(&table, (x, y));
 
-    (alignment, U::from(edit_distance).unwrap())
+    let edit_x_into_y = alignment_to_edits(&aligned_x, &aligned_y);
+    let edit_y_into_x = alignment_to_edits(&aligned_y, &aligned_x);
+
+    let edit_distance: usize = table[table.len() - 1][table[0].len() - 1].0;
+
+    (
+        (edit_x_into_y, edit_y_into_x),
+        U::from(edit_distance).unwrap(),
+    )
 }
 
 // Iterative version of traceback function so we can benchmark both this and recursive option
@@ -70,14 +104,12 @@ pub fn traceback_iterative<T: Number>(
 pub fn traceback_recursive<T: Number>(
     table: &Vec<Vec<(usize, Direction)>>,
     unaligned_seqs: (&[T], &[T]),
-) -> ((Vec<T>, Vec<T>), usize) {
+) -> (Vec<T>, Vec<T>) {
     let indices = (table.len() - 1, table[0].len() - 1);
 
     let alignment = _traceback_recursive(table, indices, unaligned_seqs, (Vec::new(), Vec::new()));
 
-    let edit_distance = table[indices.0][indices.1].0;
-
-    (alignment, edit_distance)
+    alignment
 }
 
 // Private traceback recursive function. Returns a single alignment (disregards ties for best-scoring alignment)
@@ -137,7 +169,7 @@ mod tests {
     use crate::alignment::needleman_wunsch;
     use crate::alignment::traceback_iterative;
     use crate::alignment::traceback_recursive;
-    use crate::grid::compute_table;
+    use crate::grid::compute_nw_table;
     use crate::grid::Direction;
 
     #[test]
@@ -162,7 +194,7 @@ mod tests {
     fn test_compute_table() {
         let x_u8 = "NAJIBPEPPERSEATS".as_bytes();
         let y_u8 = "NAJIBEATSPEPPERS".as_bytes();
-        let table = compute_table(x_u8, y_u8);
+        let table = compute_nw_table(x_u8, y_u8);
         assert_eq!(
             table,
             [
@@ -497,31 +529,25 @@ mod tests {
     fn test_traceback_recursive() {
         let x_u8 = "NAJIBPEPPERSEATS".as_bytes();
         let y_u8 = "NAJIBEATSPEPPERS".as_bytes();
-        let table1: Vec<Vec<(usize, crate::grid::Direction)>> = compute_table(x_u8, y_u8);
+        let table1: Vec<Vec<(usize, crate::grid::Direction)>> = compute_nw_table(x_u8, y_u8);
         let nw_u8 = traceback_recursive(&table1, (x_u8, y_u8));
         assert_eq!(
             nw_u8,
             (
-                (
-                    [78, 65, 74, 73, 66, 45, 80, 69, 80, 80, 69, 82, 83, 69, 65, 84, 83].to_vec(),
-                    [78, 65, 74, 73, 66, 69, 65, 84, 83, 80, 69, 80, 80, 69, 45, 82, 83].to_vec()
-                ),
-                8
+                [78, 65, 74, 73, 66, 45, 80, 69, 80, 80, 69, 82, 83, 69, 65, 84, 83].to_vec(),
+                [78, 65, 74, 73, 66, 69, 65, 84, 83, 80, 69, 80, 80, 69, 45, 82, 83].to_vec()
             )
         );
 
         let x = "NOTGUILTY".as_bytes();
         let y = "NOTGUILTY".as_bytes();
-        let table2: Vec<Vec<(usize, crate::grid::Direction)>> = compute_table(x, y);
+        let table2: Vec<Vec<(usize, crate::grid::Direction)>> = compute_nw_table(x, y);
         let nw = traceback_recursive(&table2, (x, y));
         assert_eq!(
             nw,
             (
-                (
-                    [78, 79, 84, 71, 85, 73, 76, 84, 89].to_vec(),
-                    [78, 79, 84, 71, 85, 73, 76, 84, 89].to_vec()
-                ),
-                0
+                [78, 79, 84, 71, 85, 73, 76, 84, 89].to_vec(),
+                [78, 79, 84, 71, 85, 73, 76, 84, 89].to_vec()
             )
         );
     }
@@ -530,7 +556,7 @@ mod tests {
     fn test_traceback_iterative() {
         let x_u8 = "NAJIBPEPPERSEATS".as_bytes();
         let y_u8 = "NAJIBEATSPEPPERS".as_bytes();
-        let table1: Vec<Vec<(usize, crate::grid::Direction)>> = compute_table(x_u8, y_u8);
+        let table1: Vec<Vec<(usize, crate::grid::Direction)>> = compute_nw_table(x_u8, y_u8);
         let nw_u8 = traceback_iterative(&table1, (x_u8, y_u8));
         assert_eq!(
             nw_u8,

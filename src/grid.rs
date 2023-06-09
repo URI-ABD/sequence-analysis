@@ -9,7 +9,7 @@ pub enum Direction {
 }
 
 // New function to compute the distance and direction table using scoring scheme 0; 1; 1
-pub fn compute_table<T: Number>(x: &[T], y: &[T]) -> Vec<Vec<(usize, Direction)>> {
+pub fn compute_nw_table<T: Number>(x: &[T], y: &[T]) -> Vec<Vec<(usize, Direction)>> {
     let len_x = x.len();
     let len_y = y.len();
 
