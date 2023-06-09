@@ -27,6 +27,7 @@ pub fn needleman_wunsch_with_alignment<'a, T: Number, U: Number>(
     (alignment, U::from(edit_distance).unwrap())
 }
 
+// Iterative version of traceback function so we can benchmark both this and recursive option
 pub fn traceback_iterative<T: Number>(
     table: &Vec<Vec<(usize, Direction)>>,
     unaligned_seqs: (&[T], &[T]),
@@ -46,16 +47,16 @@ pub fn traceback_iterative<T: Number>(
             }
             Direction::Left => {
                 aligned_x.insert(0, unaligned_x[column_index - 1]);
-                aligned_y.insert(0, T::from('-' as u8).unwrap());
+                aligned_y.insert(0, T::from(b'-').unwrap());
             }
             Direction::Up => {
-                aligned_x.insert(0, T::from('-' as u8).unwrap());
+                aligned_x.insert(0, T::from(b'-').unwrap());
                 aligned_y.insert(0, unaligned_y[row_index - 1]);
             }
             Direction::None => {}
         }
-        row_index = row_index - 1;
-        column_index = column_index - 1;
+        row_index -= 1;
+        column_index -= 1;
         direction = table[row_index][column_index].1;
     }
 
@@ -63,15 +64,16 @@ pub fn traceback_iterative<T: Number>(
 }
 
 // Public function for recurisve traceback to get alignment and edit distance (ignores ties for now)
-pub fn traceback_recursive<'a, T: Number>(
+pub fn traceback_recursive<T: Number>(
     table: &Vec<Vec<(usize, Direction)>>,
     unaligned_seqs: (&[T], &[T]),
 ) -> ((Vec<T>, Vec<T>), usize) {
+
     let row_index = table.len() - 1;
     let column_index = table[0].len() - 1;
 
     let alignment = _traceback_recursive(
-        &table,
+        table,
         row_index,
         column_index,
         unaligned_seqs,
@@ -83,8 +85,8 @@ pub fn traceback_recursive<'a, T: Number>(
     (alignment, edit_distance)
 }
 
-// Returns a single alignment (disregards ties for best-scoring alignment)
-fn _traceback_recursive<'a, T: Number>(
+// Private traceback recursive function. Returns a single alignment (disregards ties for best-scoring alignment)
+fn _traceback_recursive<T: Number>(
     table: &Vec<Vec<(usize, Direction)>>,
     row_index: usize,
     column_index: usize,
