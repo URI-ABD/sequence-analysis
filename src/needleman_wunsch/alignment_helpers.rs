@@ -192,10 +192,10 @@ fn _traceback_recursive<T: Number>(
 
 #[cfg(test)]
 mod tests {
-    use crate::alignment_helpers::compute_nw_table;
-    use crate::alignment_helpers::traceback_iterative;
-    use crate::alignment_helpers::traceback_recursive;
-    use crate::alignment_helpers::Direction;
+    use crate::needleman_wunsch::alignment_helpers::compute_nw_table;
+    use crate::needleman_wunsch::alignment_helpers::traceback_iterative;
+    use crate::needleman_wunsch::alignment_helpers::traceback_recursive;
+    use crate::needleman_wunsch::alignment_helpers::Direction;
 
     #[test]
     fn test_compute_table() {
