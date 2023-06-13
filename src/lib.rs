@@ -1,2 +1,2 @@
-pub mod alignment;
-pub mod grid;
+pub mod alignment_helpers;
+pub mod string;
