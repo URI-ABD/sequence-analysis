@@ -1,5 +1,5 @@
-use clam::core::number::Number;
 use super::alignment_helpers;
+use clam::core::number::Number;
 
 /// Calculate the edit distance between two strings using Needleman-Wunsch table.
 /// This function is only accurate with a scoring scheme for which all penalties
@@ -44,7 +44,10 @@ pub fn needleman_wunsch_with_edits_recursive<T: Number, U: Number>(
 
     let edit_distance: usize = table[table.len() - 1][table[0].len() - 1].0;
 
-    ([edit_x_into_y, edit_y_into_x], U::from(edit_distance).unwrap())
+    (
+        [edit_x_into_y, edit_y_into_x],
+        U::from(edit_distance).unwrap(),
+    )
 }
 
 /// Determine the set of edits needed to turn one unaligned sequence into another,
@@ -72,5 +75,8 @@ pub fn needleman_wunsch_with_edits_iterative<T: Number, U: Number>(
 
     let edit_distance: usize = table[table.len() - 1][table[0].len() - 1].0;
 
-    ([edit_x_into_y, edit_y_into_x], U::from(edit_distance).unwrap())
+    (
+        [edit_x_into_y, edit_y_into_x],
+        U::from(edit_distance).unwrap(),
+    )
 }

@@ -1,6 +1,5 @@
 use clam::core::number::Number;
 
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Direction {
     Diagonal,
@@ -82,6 +81,16 @@ pub fn alignment_to_edits<T: Number>(aligned_x: &[T], aligned_y: &[T]) -> Vec<Ed
         .collect()
 }
 
+// Given a sequence in alignment, determine the indices at which gaps should be inserted
+pub fn get_gap_indices<T: Number>(aligned_x: &[T]) -> Vec<usize> {
+    aligned_x
+        .iter()
+        .enumerate()
+        .filter(|(_, &value)| value == T::from(b'-').unwrap())
+        .map(|(index, _)| index)
+        .collect()
+}
+
 // Iterative version of traceback function so we can benchmark both this and recursive option
 pub fn traceback_iterative<T: Number>(
     table: &Vec<Vec<(usize, Direction)>>,
@@ -134,7 +143,12 @@ pub fn traceback_recursive<T: Number>(
     let mut aligned_x: Vec<T> = Vec::new();
     let mut aligned_y: Vec<T> = Vec::new();
 
-    _traceback_recursive(table, indices, unaligned_seqs, (&mut aligned_x, &mut aligned_y));
+    _traceback_recursive(
+        table,
+        indices,
+        unaligned_seqs,
+        (&mut aligned_x, &mut aligned_y),
+    );
 
     (aligned_x, aligned_y)
 }
@@ -590,4 +604,3 @@ mod tests {
         );
     }
 }
-
