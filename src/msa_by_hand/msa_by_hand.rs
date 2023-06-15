@@ -123,6 +123,32 @@ mod tests {
                 [6, 7, 7, 5, 5, 5, 0]
             ]
         );
+
+        let sequences_000 = [
+        "attgttcaga".as_bytes(),
+        "gtgacctcat".as_bytes(),
+        "ctttgttacc".as_bytes(),
+        "ccttgtgtac".as_bytes(),
+        "cttgcctgtt".as_bytes() ].to_vec();
+
+
+        
+        assert_eq!(
+            distance_many_to_many(&sequences_000.clone(), &sequences_000),
+            [[0, 7, 5, 6, 6], [7, 0, 8, 8, 5], [5, 8, 0, 3, 6], [6, 8, 3, 0, 5], [6, 5, 6, 5, 0]]
+        );
+
+        
+        let sequences_001 = [
+            "tgggtactga".as_bytes(),
+            "agaaagcgca".as_bytes(),
+            "ggatgtcaca".as_bytes()
+        ].to_vec();
+
+        assert_eq!(
+            distance_many_to_many(&sequences_001.clone(), &sequences_001),
+            [[0, 7, 6], [7, 0, 5], [6, 5, 0]]
+        );
     }
 
     #[test]
@@ -195,5 +221,56 @@ mod tests {
         assert_eq!(center_index, 5);
         assert_eq!(center_distance_sum, 34);
         assert_eq!(center_sequence, "cagcggaggg");
+
+        let sequences_000 = [
+        "attgttcaga".as_bytes(),
+        "gtgacctcat".as_bytes(),
+        "ctttgttacc".as_bytes(),
+        "ccttgtgtac".as_bytes(),
+        "cttgcctgtt".as_bytes() ].to_vec();
+
+        let pairwise_distances = distance_many_to_many(&sequences_000.clone(), &sequences_000);
+
+        let (center_index, _) = median(pairwise_distances);
+        assert_eq!(center_index, 2);
+
+        let sequences_001 = [
+            "tgggtactga".as_bytes(),
+            "agaaagcgca".as_bytes(),
+            "ggatgtcaca".as_bytes()
+        ].to_vec();
+        let pairwise_distances = distance_many_to_many(&sequences_001.clone(), &sequences_000);
+
+        let (center_index, _) = median(pairwise_distances);
+
+        assert_eq!(center_index, 2);
+
+        let sequences_010 = [
+            "gcacacgtgg".as_bytes(), 
+            "tcgaaacggc".as_bytes(), 
+            "gcagagggcc".as_bytes(), 
+        ].to_vec();
+
+
+        let pairwise_distances = distance_many_to_many(&sequences_010.clone(), &sequences_010);
+
+        let (center_index, _) = median(pairwise_distances);
+
+        assert_eq!(center_index, 0);
+
+        let sequences_011 = [
+            "gaatgcaagg".as_bytes(),
+            "ggccgaatag".as_bytes(),
+            "agtgggatgt".as_bytes(),
+            "cagcggaggg".as_bytes()
+        
+        ].to_vec();
+
+        let pairwise_distances = distance_many_to_many(&sequences_011.clone(), &sequences_011);
+
+        let (center_index, _) = median(pairwise_distances);
+
+        assert_eq!(center_index, 3);
+
     }
 }
