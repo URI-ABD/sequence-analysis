@@ -1,3 +1,11 @@
+// A little messy currently
+// Going back and forth between representing matches as Vec<(usize, usize)> or (Vec<usize>, Vec<usize>) currently switching to Vec<(usize, usize)>
+// Idea to get a cluster of diagonals at least 3 matches, 2 gaps, clusters can be bigger if there's matches after fifth matches but clusters must have at least 3 matches and 
+//at the most two gaps, if over len 5, cluster ends when gap is hit
+// Criteria probably needs fixing
+// Clusters can be one alignment itself and some can be connected to make longer alignments with gaps
+// Choose a best score
+
 use std::ops::RangeBounds;
 
 use clam::number::Number;
@@ -125,29 +133,22 @@ fn cluster_found(alignment_clusters: Vec<Vec<(usize, usize)>>, index: (usize, us
 }
 
 // Find all the clusters that represent alignments
-fn detect_clusters(matches: (Vec<usize>, Vec<usize>), xlen: usize, ylen: usize) -> Vec<Vec<(usize, usize)>> {
+fn detect_clusters(matches: Vec<(usize, usize)>, xlen: usize, ylen: usize) -> Vec<Vec<(usize, usize)>> {
     let mut alignment_clusters: Vec<Vec<(usize, usize)>> = Vec::new();
-    for i in 0..(matches.0.len() - 3){
-        println!("Start: {} {}", matches.0[i], matches.1[i]);
-        if cluster_found(alignment_clusters.clone(), (matches.0[i], matches.1[i])) == 0 {
+    for i in 0..(matches.len() - 3){
+        println!("Start: {} {}", matches[i].0, matches[i].1);
+        if cluster_found(alignment_clusters.clone(), (matches[i].0, matches[i].1)) == 0 {
             println!("Not found");
             let (mut diagonals, mut j) = (1, 1);
             let (mut consect_gaps, mut old_matches, mut consect_matches) = (0, 0, 0);
-            let mut curr_position = (matches.0[i], matches.1[i]);
+            let mut curr_position = (matches[i].0, matches[i].1);
             // Alignment criteria:
             // if consect_matches >= consect_gaps or old_matches >= consect_gaps
             // Cannot go outside the grid
             while (consect_matches >= consect_gaps || old_matches >= consect_gaps) 
-            && (Some(&curr_position.0) < matches.0.iter().max() && Some(&curr_position.1) < matches.1.iter().max())  {
+            && curr_position.0 < xlen - 1 && curr_position.1 < ylen - 1 {
                 println!("helllooo");
-                if matches.0.iter().position(|&r| r == curr_position.0) != None {
-                    println!("not none");
-                    if matches.0.iter().position(|&r| r == curr_position.0) == Some(23){
-                        println!("yay");
-                    }
-                }
-                if matches.0.iter().position(|&r| r == curr_position.0) != None 
-                && matches.0.iter().position(|&r| r == curr_position.0) == matches.1.iter().position(|&r| r == curr_position.1) {
+                if matches.iter().position(|&r| r == (curr_position.0, curr_position.1)) != None {
                     diagonals = diagonals + 1;
                     consect_matches = consect_matches + 1;
                     println!("Making alignment")
@@ -158,7 +159,7 @@ fn detect_clusters(matches: (Vec<usize>, Vec<usize>), xlen: usize, ylen: usize) 
                 if consect_gaps + consect_matches == 5 && consect_matches >= 3 || (consect_matches >= 3 && curr_position.0 == xlen - 1 || curr_position.1 == ylen - 1){
                     // Add to cluster if there's more matches
                     let mut ending = 5;
-                    while  matches.0.iter().position(|&r| r == curr_position.0 + ending) == matches.1.iter().position(|&r| r == curr_position.0 + ending) {
+                    while matches.iter().position(|&r| r == (curr_position.0, curr_position.1)) != None {
                         consect_matches = consect_matches + 1;
                         ending = ending + 1;
                     }
@@ -166,7 +167,8 @@ fn detect_clusters(matches: (Vec<usize>, Vec<usize>), xlen: usize, ylen: usize) 
                     j = j + ending - 2;
                     let mut curr_alignment:Vec<(usize, usize)> = Vec::new();
                     // The first and second position of cluster should only be added if there's not 2 gaps in a row right after
-                    if (matches.0.iter().position(|&r| r == curr_position.0 - j + 1) == matches.1.iter().position(|&r| r == curr_position.1 - j + 1)) || (matches.0.iter().position(|&r| r == curr_position.0 - j + 2) == matches.1.iter().position(|&r| r == curr_position.1 - j + 2)){
+                    // Will fix criteria for this statement
+                    if matches.iter().position(|&r| r == (curr_position.0 - j + 1, curr_position.1 - j + 1)) != None || matches.iter().position(|&r| r == (curr_position.0 - j + 2, curr_position.1 - j + 2)) != None {
                         curr_alignment.push((curr_position.0 - j, curr_position.1 - j));
                         curr_alignment.push((curr_position.0 - j + 1, curr_position.1 - j + 1));
                     }
@@ -229,10 +231,9 @@ mod tests {
             vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1],
             vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0]]
         );
-        assert_eq!(matches, (vec![0, 1, 13, 2, 3, 4, 6, 9, 12, 1, 13, 14, 11,
-            15, 5, 7, 8, 6, 9, 12, 5, 7, 8, 5, 7, 8, 6, 9, 12, 10, 11, 15], vec![0,
-            1, 1, 2, 3, 4, 5, 5, 5, 6, 6, 7, 8, 8, 9, 9, 9, 10, 10, 10,
-            11, 11, 11, 12, 12, 12, 13, 13, 13, 14, 15, 15]));
+        assert_eq!(matches, (vec![(0, 0), (1, 1), (13, 1), (2, 2), (3, 3), (4, 4), (6, 5), (9, 5), (12, 5), (1, 6), (13, 6), (14, 7), (11, 8),
+        (15, 8), (5, 9), (7, 9), (8, 9), (6, 10), (9, 10), (12, 10), (5, 11), (7, 11), (8, 11), (5,12), (7, 12), (8, 12), (6, 13), (9, 13), 
+        (12, 13), (10, 14), (11, 15), (15, 15)]));
         let clusters = detect_clusters(matches, x_u8.len(), y_u8.len());
         println!("{}", clusters.len());
         for i in 0..clusters.len() - 1{
