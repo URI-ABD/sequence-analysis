@@ -141,7 +141,7 @@ fn detect_clusters(matches: (Vec<usize>, Vec<usize>), xlen: usize, ylen: usize) 
             && (Some(&curr_position.0) < matches.0.iter().max() && Some(&curr_position.1) < matches.1.iter().max())  {
                 println!("helllooo");
                 if matches.0.iter().position(|&r| r == curr_position.0) != None {
-                    println!("wtf");
+                    println!("not none");
                     if matches.0.iter().position(|&r| r == curr_position.0) == Some(23){
                         println!("yay");
                     }
