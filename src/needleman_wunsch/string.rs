@@ -1,5 +1,5 @@
 use super::alignment_helpers;
-use clam::core::number::Number;
+use abd_clam::number::Number;
 
 /// Calculate the edit distance between two strings using Needleman-Wunsch table.
 /// This function is only accurate with a scoring scheme for which all penalties
@@ -79,4 +79,11 @@ pub fn needleman_wunsch_with_edits_iterative<T: Number, U: Number>(
         [edit_x_into_y, edit_y_into_x],
         U::from(edit_distance).unwrap(),
     )
+}
+
+pub fn needleman_wunsch_alignment_only<T: Number, U: Number>(x: &[T], y: &[T]) -> (Vec<T>, Vec<T>) {
+    let table = alignment_helpers::compute_nw_table(x, y);
+    let (aligned_x, aligned_y) = alignment_helpers::traceback_recursive(&table, (x, y));
+
+    (aligned_x, aligned_y)
 }

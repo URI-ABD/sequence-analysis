@@ -1,4 +1,4 @@
-use clam::core::number::Number;
+use abd_clam::number::Number;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Direction {
