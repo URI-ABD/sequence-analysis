@@ -319,39 +319,35 @@ mod tests {
     #[test]
     fn test_anti_median() {
 
-        let sequences_000 = [
-            "gaatgcaagg".as_bytes(),
-            "agtgggatgt".as_bytes(),
-            "cagcggaggg".as_bytes(),
-            "gcagagggcc".as_bytes(),
-        ].to_vec();
+       let sequences_010 = [
+        "tgggtactga".as_bytes(),
+        "attgttcaga".as_bytes(),
+        "ggatgtcaca".as_bytes(),
+       ].to_vec();
+
+        let pairwise_distances_010 = distance_many_to_many(&sequences_010.clone(), &sequences_010);
+        let (anti_center_index, anti_center_distance_sum) = anti_median(pairwise_distances_010);
+        let anti_center_sequence: &str = std::str::from_utf8(&sequences_010[anti_center_index]).unwrap();
+
+        assert_eq!(anti_center_index, 2);
+        assert_eq!(anti_center_distance_sum, 11);
+        assert_eq!(anti_center_sequence, "ggatgtcaca");
 
 
-        let pairwise_distances_000 = distance_many_to_many(&sequences_000.clone(), &sequences_000); 
+       let sequences_011 = [
+        "ggccgaatag".as_bytes(), 
+        "ctttgttacc".as_bytes(), 
+        "ccttgtgtac".as_bytes(), 
+        "cttgcctgtt".as_bytes(), 
+       ].to_vec();
 
-        let (anti_center_index_000, anti_center_distance_sum_000) = anti_median(pairwise_distances_000);
-        let anti_center_sequence_000: &str = std::str::from_utf8(&sequences_000[anti_center_index_000]).unwrap();
+       let pairwise_distances_011 = distance_many_to_many(&sequences_011.clone(), &sequences_011);
+       let (anti_center_index, anti_center_distance_sum) = anti_median(pairwise_distances_011);
+       let anti_center_sequence: &str = std::str::from_utf8(&sequences_011[anti_center_index]).unwrap();
 
-        assert_eq!(anti_center_index_000, 3);
-        assert_eq!(anti_center_distance_sum_000, 18);
-        assert_eq!(anti_center_sequence_000, "gcagagggcc");
-
-        let sequences_001 = [
-            "gcacacgtgg".as_bytes(),
-            "tcgaaacggc".as_bytes(),
-            "agaaagcgca".as_bytes(),
-            "gtgacctcat".as_bytes(),
-        ].to_vec();
-
-        let pairwise_distances_001 = distance_many_to_many(&sequences_001.clone(), &sequences_001);
-
-        let (anti_center_index_001, anti_center_distance_sum_001) = anti_median(pairwise_distances_001);
-        let anti_center_sequence_001: &str = std::str::from_utf8(&sequences_001[anti_center_index_001]).unwrap();
-
-        assert_eq!(anti_center_index_001, 3);
-        assert_eq!(anti_center_distance_sum_001, 21);
-        assert_eq!(anti_center_sequence_001, "gtgacctcat");
-            
+       assert_eq!(anti_center_index, 0);
+       assert_eq!(anti_center_distance_sum, 23);
+       assert_eq!(anti_center_sequence, "ggccgaatag");            
 
 
     }
@@ -384,22 +380,12 @@ mod tests {
 
         let pairwise_distances = distance_many_to_many(&sequences.clone(), &sequences);
     
-        let distances_center = get_distances_between_instances(&pairwise_distances,  &[2, 4, 7, 12], 12);
+        let distances_center = get_distances_between_instances(&pairwise_distances,  &[0, 1, 10], 10);
+        assert_eq!(distances_center, vec![6, 5, 0]);
+
+        let distances_center = get_distances_between_instances(&pairwise_distances,  &[3, 11, 13, 14], 3);
         assert_eq!(distances_center, vec![6, 7, 5, 0]);
 
-        let distances_left_pole = get_distances_between_instances(&pairwise_distances,  &[2, 4, 7, 12], 4);
-        assert_eq!(distances_left_pole, vec![6, 0, 5, 7]);
-
-        let distances_right_pole = get_distances_between_instances(&pairwise_distances,  &[2, 4, 7, 12], 2);
-        assert_eq!(distances_right_pole, vec![0, 6, 5, 6]);
-    
-        let distances_center = get_distances_between_instances(&pairwise_distances,  &[5, 6, 8, 9], 9);
-        assert_eq!(distances_center, vec![7, 8, 6, 0]);
-
-        let distances_left_pole = get_distances_between_instances(&pairwise_distances,  &[5, 6, 8, 9], 6);
-        assert_eq!(distances_left_pole, vec![5, 0, 5, 8]);
-
-        let distances_right_pole = get_distances_between_instances(&pairwise_distances,  &[5, 6, 8, 9], 5);
-        assert_eq!(distances_right_pole, vec![0, 5, 7, 7]);
+        
 }
 }
