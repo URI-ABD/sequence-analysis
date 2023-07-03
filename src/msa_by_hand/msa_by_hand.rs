@@ -40,7 +40,7 @@ pub fn get_gap_indices(alignment: Vec<u8>) -> Vec<usize> {
     let alignment_length = reversed_alignment.len();
     for (i, c) in reversed_alignment.into_iter().enumerate() {
         if c == b'-' {
-            gap_indices.push(alignment_length - i);
+            gap_indices.push(alignment_length - i-1);
         }
     }
     gap_indices
@@ -53,8 +53,9 @@ pub fn apply_edits(old_center: Vec<u8>, gap_indices: Vec<usize>) -> Vec<u8> {
     let mut temp_center = old_center.to_vec();
     temp_center.reverse();
     for (i, &c) in temp_center.iter().enumerate() {
-        if i == gap_index {
+        if i == temp_center.len()-gap_index {
             gap_index = gap_indices.pop().unwrap_or(0);
+            new_center.push(b'-');
         } else {
             new_center.push(c);
         }
@@ -151,12 +152,15 @@ impl<'a> MSA_Tree<'a> {
                 let center = clusters_copy[index].center.clone();
                 let gap_indices = get_gap_indices(center);
                 println!("index is {}", &index);
-                let parent_index = index - (index/2 +1);
+                let parent_index = index - (index/2 );
                 let parent_center = clusters_copy[parent_index].center.clone();
+                println!("i think my parent's center is {}", std::str::from_utf8(&parent_center).unwrap());
                 let edited_parent_center = if gap_indices.len() > 0 {
                     println!("here for cluster {}", c.name);
-                    parent_center = apply_edits(parent_center, gap_indices); 
-                    println!("edited parent center for parent of {}: {:?}", c.name, parent_center);
+                    let parent_center = apply_edits(parent_center, gap_indices.clone()); 
+                    println!("gap indices are going to be: {:?}", gap_indices);
+                    println!("edited parent center for parent of {}: {:?}", c.name, std::str::from_utf8(&parent_center));
+                    parent_center
                 } else {
                     parent_center
                 };
