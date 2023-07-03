@@ -8,3 +8,13 @@ edition = "2021"
 
 [dependencies]
 abd-clam = { git = "https://github.com/URI-ABD/clam.git", branch = "master" }
+
+
+[[example]]
+name = "bad_tree"
+path = "src/msa_by_hand/bad_tree.rs"
+
+
+[[example]]
+name = "good_tree"
+path = "src/msa_by_hand/good_tree.rs"
