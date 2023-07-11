@@ -1,22 +1,22 @@
-use sequence_analysis::msa_by_hand::msa_by_hand::MSA_Tree;
+use sequence_analysis::msa_by_hand::align_by_hand::MSATree;
 
 fn main() {
-    let sequences = [
-        "tgggtactga".as_bytes(),
-        "attgttcaga".as_bytes(),
-        "gaatgcaagg".as_bytes(),
-        "ggccgaatag".as_bytes(),
-        "agtgggatgt".as_bytes(),
-        "gcacacgtgg".as_bytes(),
-        "tcgaaacggc".as_bytes(),
-        "cagcggaggg".as_bytes(),
-        "agaaagcgca".as_bytes(),
-        "gtgacctcat".as_bytes(),
-        "ggatgtcaca".as_bytes(),
-        "ctttgttacc".as_bytes(),
-        "gcagagggcc".as_bytes(),
-        "ccttgtgtac".as_bytes(),
-        "cttgcctgtt".as_bytes(),
+    let _sequences = [
+        "tgggtactga",
+        "attgttcaga",
+        "gaatgcaagg",
+        "ggccgaatag",
+        "agtgggatgt",
+        "gcacacgtgg",
+        "tcgaaacggc",
+        "cagcggaggg",
+        "agaaagcgca",
+        "gtgacctcat",
+        "ggatgtcaca",
+        "ctttgttacc",
+        "gcagagggcc",
+        "ccttgtgtac",
+        "cttgcctgtt",
     ]
     .to_vec();
 
@@ -27,7 +27,6 @@ fn main() {
     ];
 
     println!("number of clusters is {}", bad_tree_cluster_names.len());
-
 
     let bad_tree_cluster_centers = vec![
         "cttgcctgtt".as_bytes().to_vec(), // 0
@@ -61,7 +60,163 @@ fn main() {
         "ctttgttacc".as_bytes().to_vec(), // 011111
     ];
 
-    let mut msa_tree = MSA_Tree::new(sequences, bad_tree_cluster_names, bad_tree_cluster_centers);
+    let bad_tree_cluster_layers = vec![
+        0, // 0
+        1, // 00
+        1, // 01
+        3, // 000
+        3, // 001
+        2, // 010
+        2, // 011
+        4, // 0000
+        4, // 0001
+        4, // 0010
+        4, // 0011
+        4, // 0100
+        4, // 0101
+        3, // 0110
+        3, // 0111
+        5, // 00000
+        5, // 00001
+        5, // 00010
+        5, // 00011
+        5, // 00100
+        5, // 00101
+        5, // 00110
+        5, // 00111
+        5, // 01010
+        5, // 01011
+        4, // 01110
+        4, // 01111
+        5, // 011110
+        5, // 011111
+    ];
+
+    let bad_tree_parent_indices = vec![
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0")
+            .unwrap(), // 0
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0")
+            .unwrap(), // 00
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0")
+            .unwrap(), // 01
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "00")
+            .unwrap(), // 000
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "00")
+            .unwrap(), // 001
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "01")
+            .unwrap(), // 010
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "01")
+            .unwrap(), // 011
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "000")
+            .unwrap(), // 0000
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "000")
+            .unwrap(), // 0001
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "001")
+            .unwrap(), // 0010
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "001")
+            .unwrap(), // 0011
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "010")
+            .unwrap(), // 0100
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "010")
+            .unwrap(), // 0101
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "011")
+            .unwrap(), // 0110
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "011")
+            .unwrap(), // 0111
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0000")
+            .unwrap(), // 00000
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0000")
+            .unwrap(), // 00001
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0001")
+            .unwrap(), // 00010
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0001")
+            .unwrap(), // 00011
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0010")
+            .unwrap(), // 00100
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0010")
+            .unwrap(), // 00101
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0011")
+            .unwrap(), // 00110
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0011")
+            .unwrap(), // 00111
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0101")
+            .unwrap(), // 01010
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0101")
+            .unwrap(), // 01011
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0111")
+            .unwrap(), // 01110
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "0111")
+            .unwrap(), // 01111
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "01111")
+            .unwrap(), // 011110
+        bad_tree_cluster_names
+            .iter()
+            .position(|&c| c == "01111")
+            .unwrap(), // 011111
+    ];
+
+    let mut msa_tree = MSATree::new(
+        bad_tree_cluster_names,
+        bad_tree_cluster_centers,
+        bad_tree_cluster_layers,
+        bad_tree_parent_indices,
+    );
     msa_tree.initialize_clusters();
     msa_tree.align_all();
     msa_tree.display_aligned_tree()

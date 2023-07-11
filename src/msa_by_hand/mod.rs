@@ -1,1 +1,1 @@
-pub mod msa_by_hand;
+pub mod align_by_hand;

@@ -1,25 +1,30 @@
-use abd_clam::cluster;
-
 use crate::needleman_wunsch;
-use std::{collections::HashMap, vec};
 
 #[derive(Clone)]
-pub struct MSA_Cluster<'a> {
+pub struct MSACluster<'a> {
     index: usize,
     name: &'a str,
     center: Vec<u8>,
     layer: usize,
     sibling_index: Option<usize>,
+    parent_index: Option<usize>,
 }
 
-impl<'a> MSA_Cluster<'a> {
-    pub fn new(index: usize, name: &'a str, center: Vec<u8>) -> Self {
+impl<'a> MSACluster<'a> {
+    pub fn new(
+        index: usize,
+        name: &'a str,
+        center: Vec<u8>,
+        layer: usize,
+        parent_index: usize,
+    ) -> Self {
         Self {
             index,
             name,
             center,
-            layer: name.len(),
-            sibling_index: MSA_Cluster::get_sibling_index(index),
+            layer,
+            parent_index: Some(parent_index),
+            sibling_index: MSACluster::get_sibling_index(index),
         }
     }
 
@@ -36,80 +41,74 @@ impl<'a> MSA_Cluster<'a> {
 
 pub fn get_gap_indices(alignment: Vec<u8>) -> Vec<usize> {
     let mut gap_indices = Vec::new();
-    let reversed_alignment: Vec<_> = alignment.into_iter().rev().collect();
-    let alignment_length = reversed_alignment.len();
+    let reversed_alignment = alignment;
     for (i, c) in reversed_alignment.into_iter().enumerate() {
         if c == b'-' {
-            gap_indices.push(alignment_length - i-1);
+            gap_indices.push(i);
         }
     }
     gap_indices
 }
 
 pub fn apply_edits(old_center: Vec<u8>, gap_indices: Vec<usize>) -> Vec<u8> {
-    let mut new_center = vec![];
+    let mut new_center = old_center.to_vec();
     let mut gap_indices = gap_indices;
-    let mut gap_index = gap_indices.pop().unwrap();
-    let mut temp_center = old_center.to_vec();
-    temp_center.reverse();
-    for (i, &c) in temp_center.iter().enumerate() {
-        if i == temp_center.len()-gap_index {
-            gap_index = gap_indices.pop().unwrap_or(0);
-            new_center.push(b'-');
-        } else {
-            new_center.push(c);
-        }
+    gap_indices.reverse();
+    while !gap_indices.is_empty() {
+        let gap_index = gap_indices.pop().unwrap();
+        new_center.insert(gap_index, b'-');
     }
-    new_center.reverse();
+
     new_center
 }
 
-pub struct MSA_Tree<'a> {
-    original_sequences: Vec<&'a [u8]>,
-    distance_table: Vec<Vec<i32>>,
+pub struct MSATree<'a> {
     cluster_names: Vec<&'a str>,
     cluster_centers: Vec<Vec<u8>>,
-    clusters: Vec<MSA_Cluster<'a>>,
+    cluster_layers: Vec<usize>,
+    clusters: Vec<MSACluster<'a>>,
+    parent_indices: Vec<usize>,
     depth: usize,
 }
 
-impl<'a> MSA_Tree<'a> {
+impl<'a> MSATree<'a> {
     pub fn new(
-        original_sequences: Vec<&'a [u8]>,
         cluster_names: Vec<&'a str>,
         cluster_centers: Vec<Vec<u8>>,
+        cluster_layers: Vec<usize>,
+        parent_indices: Vec<usize>,
     ) -> Self {
         Self {
-            original_sequences,
             cluster_names,
             cluster_centers,
-            distance_table: Vec::new(),
+            cluster_layers,
+            parent_indices,
             clusters: Vec::new(),
             depth: Default::default(),
         }
     }
 
-    pub fn initialize_clusters(&mut self) -> () {
+    pub fn initialize_clusters(&mut self) {
         self.clusters = self
             .cluster_names
             .iter()
             .zip(self.cluster_centers.iter())
+            .zip(self.cluster_layers.iter())
+            .zip(self.parent_indices.iter())
             .enumerate()
-            .map(|(index, (name, center))| MSA_Cluster::new(index, name, center.to_vec()))
+            .map(|(index, (((name, center), &layer), &parent_index))| {
+                MSACluster::new(index, name, center.to_vec(), layer, parent_index)
+            })
             .collect();
 
         self.clusters.iter_mut().for_each(|c| {
-            c.layer = c.name.len();
-        });
-
-        self.clusters.iter_mut().for_each(|c| {
-            c.sibling_index = MSA_Cluster::get_sibling_index(c.index);
+            c.sibling_index = MSACluster::get_sibling_index(c.index);
         });
 
         self.depth = self.clusters.last().unwrap().layer;
     }
 
-    fn align_layer(&mut self) -> () {
+    fn align_layer(&mut self) {
         let aligned_clusters = self
             .clusters
             .clone()
@@ -125,12 +124,13 @@ impl<'a> MSA_Tree<'a> {
                             sib_center.as_slice(),
                         )
                         .0;
-                    MSA_Cluster {
+                    MSACluster {
                         index: c.index,
                         name: c.name,
                         center: aligned_center,
                         layer: c.layer,
                         sibling_index: c.sibling_index,
+                        parent_index: c.parent_index,
                     }
                 } else {
                     c
@@ -142,61 +142,46 @@ impl<'a> MSA_Tree<'a> {
         self.clusters = aligned_clusters;
     }
 
-    fn modify_parent_centers(&mut self) -> () {
+    fn modify_parent_centers(&mut self) {
         let clusters_copy = self.clusters.clone();
         let mut edited_parents = self.clusters.clone();
 
         self.clusters.iter().for_each(|c| {
             if c.layer == self.depth && c.index % 2 == 0 {
-                let index = c.index.clone();
+                let index = c.index;
                 let center = clusters_copy[index].center.clone();
                 let gap_indices = get_gap_indices(center);
-                println!("index is {}", &index);
-                let parent_index = index - (index/2 );
+                let parent_index = c.parent_index.unwrap();
                 let parent_center = clusters_copy[parent_index].center.clone();
-                println!("i think my parent's center is {}", std::str::from_utf8(&parent_center).unwrap());
-                let edited_parent_center = if gap_indices.len() > 0 {
-                    println!("here for cluster {}", c.name);
-                    let parent_center = apply_edits(parent_center, gap_indices.clone()); 
-                    println!("gap indices are going to be: {:?}", gap_indices);
-                    println!("edited parent center for parent of {}: {:?}", c.name, std::str::from_utf8(&parent_center));
-                    parent_center
+                let edited_parent_center = if !gap_indices.is_empty() {
+                    apply_edits(parent_center, gap_indices)
                 } else {
                     parent_center
                 };
-                edited_parents[parent_index] = MSA_Cluster {
+                edited_parents[parent_index] = MSACluster {
                     index: parent_index,
                     name: self.clusters[parent_index].name,
                     center: edited_parent_center,
                     layer: self.clusters[parent_index].layer,
                     sibling_index: self.clusters[parent_index].sibling_index,
+                    parent_index: self.clusters[parent_index].parent_index,
                 };
             }
         });
 
         self.clusters = edited_parents;
-
-        // clusters_copy.iter().for_each(|c| {
-        //     if c.index%2 == 0 {
-        //         let aligned_center = c.aligned_center;
-        //         let gap_indices = c.get_gap_indices(aligned_center);
-        //         let parent_index = c.index + 2 - (2*c.name.len()+1);
-        //         self.clusters[parent_index].apply_edits(gap_indices);
-        //     }
-        // });
     }
 
-    pub fn align_all(&mut self) -> () {
-        while self.depth > 1 {
+    pub fn align_all(&mut self) {
+        while self.depth > 0 {
             self.align_layer();
             self.modify_parent_centers();
 
             self.depth -= 1;
         }
-
     }
 
-    pub fn display_aligned_tree(self) -> () {
+    pub fn display_aligned_tree(self) {
         for cluster in self.clusters {
             println!(
                 "{}: {:?}",
@@ -205,95 +190,6 @@ impl<'a> MSA_Tree<'a> {
             );
         }
     }
-}
-
-pub fn msa_by_hand() -> () {
-    let good_tree_cluster_names = vec![
-        "0", "00", "01", "000", "001", "010", "011", "0000", "0001", "0010", "0011", "0100",
-        "0101", "0110", "0111", "00010", "00011",
-    ];
-
-    let bad_tree_cluster_names = vec![
-        "0", "00", "01", "000", "001", "010", "011", "0000", "0001", "0010", "0011", "0100",
-        "0101", "0110", "0111", "00000", "00001", "00010", "00011", "00100", "00101", "00110",
-        "00111", "01010", "01011", "01110", "01111", "011110", "011111",
-    ];
-
-    println!("number of clusters is {}", bad_tree_cluster_names.len());
-
-    let bad_tree_cluster_centers = vec![
-        "cttgcctgtt".as_bytes().to_vec(), // 0
-        "gtgacctcat".as_bytes().to_vec(), // 00
-        "ggccgaatag".as_bytes().to_vec(), // 01
-        "gcagagggcc".as_bytes().to_vec(), // 000
-        "gtgacctcat".as_bytes().to_vec(), // 001
-        "ggatgtcaca".as_bytes().to_vec(), // 010
-        "ccttgtgtac".as_bytes().to_vec(), // 011
-        "agtgggatgt".as_bytes().to_vec(), // 0000
-        "gaatgcaagg".as_bytes().to_vec(), // 0001
-        "tcgaaacggc".as_bytes().to_vec(), // 0010
-        "gcacacgtgg".as_bytes().to_vec(), // 0011
-        "tgggtactga".as_bytes().to_vec(), // 0100
-        "attgttcaga".as_bytes().to_vec(), // 0101
-        "ggccgaatag".as_bytes().to_vec(), // 0110
-        "ccttgtgtac".as_bytes().to_vec(), // 0111
-        "cagcggaggg".as_bytes().to_vec(), // 00000
-        "agtgggatgt".as_bytes().to_vec(), // 00001
-        "gcagagggcc".as_bytes().to_vec(), // 00010
-        "gaatgcaagg".as_bytes().to_vec(), // 00011
-        "agaaagcgca".as_bytes().to_vec(), // 00100
-        "tcgaaacggc".as_bytes().to_vec(), // 00101
-        "gtgacctcat".as_bytes().to_vec(), // 00110
-        "gcacacgtgg".as_bytes().to_vec(), // 00111
-        "ggatgtcaca".as_bytes().to_vec(), // 01010
-        "attgttcaga".as_bytes().to_vec(), // 01011
-        "cttgcctgtt".as_bytes().to_vec(), // 01110
-        "ctttgttacc".as_bytes().to_vec(), // 01111
-        "ccttgtgtac".as_bytes().to_vec(), // 011110
-        "ctttgttacc".as_bytes().to_vec(), // 011111
-    ];
-
-    let good_tree_cluster_centers = vec![
-        "gaatgcaagg".as_bytes(),
-        "ctttgttacc".as_bytes(),
-        "ggatgtcaca".as_bytes(),
-        "gcacacgtgg".as_bytes(),
-        "cagcggaggg".as_bytes(),
-        "gtgacctcat".as_bytes(),
-        "ctttgttacc".as_bytes(),
-        "tgggtactga".as_bytes(),
-        "ggatgtcaca".as_bytes(),
-        "gcacacgtgg".as_bytes(),
-        "gcagagggcc".as_bytes(),
-        "ggccgaatag".as_bytes(),
-        "cagcggaggg".as_bytes(),
-        "attgttcaga".as_bytes(),
-        "ctttgttacc".as_bytes(),
-    ];
-
-    let sequences = [
-        "tgggtactga".as_bytes(),
-        "attgttcaga".as_bytes(),
-        "gaatgcaagg".as_bytes(),
-        "ggccgaatag".as_bytes(),
-        "agtgggatgt".as_bytes(),
-        "gcacacgtgg".as_bytes(),
-        "tcgaaacggc".as_bytes(),
-        "cagcggaggg".as_bytes(),
-        "agaaagcgca".as_bytes(),
-        "gtgacctcat".as_bytes(),
-        "ggatgtcaca".as_bytes(),
-        "ctttgttacc".as_bytes(),
-        "gcagagggcc".as_bytes(),
-        "ccttgtgtac".as_bytes(),
-        "cttgcctgtt".as_bytes(),
-    ]
-    .to_vec();
-
-    let mut msa_tree = MSA_Tree::new(sequences, bad_tree_cluster_names, bad_tree_cluster_centers);
-    msa_tree.initialize_clusters();
-    msa_tree.align_all();
-    msa_tree.display_aligned_tree()
 }
 
 pub fn median(pairwise_distances: Vec<Vec<i32>>) -> (usize, i32) {
@@ -314,13 +210,13 @@ pub fn anti_median(pairwise_distances: Vec<Vec<i32>>) -> (usize, i32) {
         .unwrap()
 }
 
-pub fn distance_many_to_many(left: &Vec<&[u8]>, right: &Vec<&[u8]>) -> Vec<Vec<i32>> {
+pub fn distance_many_to_many(left: &[&[u8]], right: &[&[u8]]) -> Vec<Vec<i32>> {
     left.iter()
         .map(|&l| distance_one_to_many(l, right))
         .collect()
 }
 
-pub fn distance_one_to_many(left: &[u8], right: &Vec<&[u8]>) -> Vec<i32> {
+pub fn distance_one_to_many(left: &[u8], right: &[&[u8]]) -> Vec<i32> {
     right
         .iter()
         .map(|&r| needleman_wunsch::string::needleman_wunsch(left, r))
@@ -328,7 +224,7 @@ pub fn distance_one_to_many(left: &[u8], right: &Vec<&[u8]>) -> Vec<i32> {
 }
 
 pub fn get_distances_between_instances(
-    table: &Vec<Vec<i32>>,
+    table: &[Vec<i32>],
     indices: &[usize],
     center_index: usize,
 ) -> Vec<i32> {
@@ -343,10 +239,8 @@ pub fn get_distances_between_instances(
 #[cfg(test)]
 mod tests {
     use super::median;
-    use crate::msa_by_hand::msa_by_hand::anti_median;
-    use crate::msa_by_hand::msa_by_hand::distance_many_to_many;
-    use crate::msa_by_hand::msa_by_hand::get_distances_between_instances;
-    use crate::msa_by_hand::msa_by_hand::msa_by_hand;
+    use crate::msa_by_hand::align_by_hand::distance_many_to_many;
+    use crate::msa_by_hand::align_by_hand::get_distances_between_instances;
 
     #[test]
     fn test_distances_many_to_many() {
@@ -432,17 +326,12 @@ mod tests {
         .to_vec();
 
         let pairwise_distances_011 = distance_many_to_many(&sequences_011.clone(), &sequences_011);
-        let (center_index_011, center_distance_sum_011) = median(pairwise_distances_011);
+        let (center_index_011, _) = median(pairwise_distances_011);
         let center_sequence_011: &str =
             std::str::from_utf8(&sequences_011[center_index_011]).unwrap();
 
         assert_eq!(center_index_011, 1);
         assert_eq!(center_sequence_011, "ccttgtgtac");
-    }
-
-    #[test]
-    fn test_msa_by_hand() {
-        msa_by_hand()
     }
 
     #[test]
