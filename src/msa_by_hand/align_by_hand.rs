@@ -1,6 +1,7 @@
 use crate::needleman_wunsch;
 
 #[derive(Clone)]
+/// Represents a cluster for use in an MSA tree.
 pub struct MSACluster<'a> {
     index: usize,
     name: &'a str,
@@ -16,14 +17,14 @@ impl<'a> MSACluster<'a> {
         name: &'a str,
         center: Vec<u8>,
         layer: usize,
-        parent_index: usize,
+        parent_index: Option<usize>,
     ) -> Self {
         Self {
             index,
             name,
             center,
             layer,
-            parent_index: Some(parent_index),
+            parent_index,
             sibling_index: MSACluster::get_sibling_index(index),
         }
     }
@@ -39,7 +40,7 @@ impl<'a> MSACluster<'a> {
     }
 }
 
-pub fn get_gap_indices(alignment: Vec<u8>) -> Vec<usize> {
+fn get_gap_indices(alignment: Vec<u8>) -> Vec<usize> {
     let mut gap_indices = Vec::new();
     let reversed_alignment = alignment;
     for (i, c) in reversed_alignment.into_iter().enumerate() {
@@ -50,7 +51,7 @@ pub fn get_gap_indices(alignment: Vec<u8>) -> Vec<usize> {
     gap_indices
 }
 
-pub fn apply_edits(old_center: Vec<u8>, gap_indices: Vec<usize>) -> Vec<u8> {
+fn apply_edits(old_center: Vec<u8>, gap_indices: Vec<usize>) -> Vec<u8> {
     let mut new_center = old_center.to_vec();
     let mut gap_indices = gap_indices;
     gap_indices.reverse();
@@ -67,7 +68,7 @@ pub struct MSATree<'a> {
     cluster_centers: Vec<Vec<u8>>,
     cluster_layers: Vec<usize>,
     clusters: Vec<MSACluster<'a>>,
-    parent_indices: Vec<usize>,
+    parent_indices: Vec<Option<usize>>,
     depth: usize,
 }
 
@@ -76,7 +77,7 @@ impl<'a> MSATree<'a> {
         cluster_names: Vec<&'a str>,
         cluster_centers: Vec<Vec<u8>>,
         cluster_layers: Vec<usize>,
-        parent_indices: Vec<usize>,
+        parent_indices: Vec<Option<usize>>,
     ) -> Self {
         Self {
             cluster_names,

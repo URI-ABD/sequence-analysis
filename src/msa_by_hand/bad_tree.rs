@@ -26,8 +26,6 @@ fn main() {
         "00111", "01010", "01011", "01110", "01111", "011110", "011111",
     ];
 
-    println!("number of clusters is {}", bad_tree_cluster_names.len());
-
     let bad_tree_cluster_centers = vec![
         "cttgcctgtt".as_bytes().to_vec(), // 0
         "gtgacctcat".as_bytes().to_vec(), // 00
@@ -93,122 +91,35 @@ fn main() {
     ];
 
     let bad_tree_parent_indices = vec![
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0")
-            .unwrap(), // 0
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0")
-            .unwrap(), // 00
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0")
-            .unwrap(), // 01
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "00")
-            .unwrap(), // 000
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "00")
-            .unwrap(), // 001
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "01")
-            .unwrap(), // 010
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "01")
-            .unwrap(), // 011
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "000")
-            .unwrap(), // 0000
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "000")
-            .unwrap(), // 0001
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "001")
-            .unwrap(), // 0010
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "001")
-            .unwrap(), // 0011
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "010")
-            .unwrap(), // 0100
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "010")
-            .unwrap(), // 0101
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "011")
-            .unwrap(), // 0110
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "011")
-            .unwrap(), // 0111
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0000")
-            .unwrap(), // 00000
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0000")
-            .unwrap(), // 00001
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0001")
-            .unwrap(), // 00010
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0001")
-            .unwrap(), // 00011
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0010")
-            .unwrap(), // 00100
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0010")
-            .unwrap(), // 00101
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0011")
-            .unwrap(), // 00110
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0011")
-            .unwrap(), // 00111
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0101")
-            .unwrap(), // 01010
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0101")
-            .unwrap(), // 01011
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0111")
-            .unwrap(), // 01110
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "0111")
-            .unwrap(), // 01111
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "01111")
-            .unwrap(), // 011110
-        bad_tree_cluster_names
-            .iter()
-            .position(|&c| c == "01111")
-            .unwrap(), // 011111
+        None,                                                      // 0
+        bad_tree_cluster_names.iter().position(|&c| c == "0"),     // 00
+        bad_tree_cluster_names.iter().position(|&c| c == "0"),     // 01
+        bad_tree_cluster_names.iter().position(|&c| c == "00"),    // 000
+        bad_tree_cluster_names.iter().position(|&c| c == "00"),    // 001
+        bad_tree_cluster_names.iter().position(|&c| c == "01"),    // 010
+        bad_tree_cluster_names.iter().position(|&c| c == "01"),    // 011
+        bad_tree_cluster_names.iter().position(|&c| c == "000"),   // 0000
+        bad_tree_cluster_names.iter().position(|&c| c == "000"),   // 0001
+        bad_tree_cluster_names.iter().position(|&c| c == "001"),   // 0010
+        bad_tree_cluster_names.iter().position(|&c| c == "001"),   // 0011
+        bad_tree_cluster_names.iter().position(|&c| c == "010"),   // 0100
+        bad_tree_cluster_names.iter().position(|&c| c == "010"),   // 0101
+        bad_tree_cluster_names.iter().position(|&c| c == "011"),   // 0110
+        bad_tree_cluster_names.iter().position(|&c| c == "011"),   // 0111
+        bad_tree_cluster_names.iter().position(|&c| c == "0000"),  // 00000
+        bad_tree_cluster_names.iter().position(|&c| c == "0000"),  // 00001
+        bad_tree_cluster_names.iter().position(|&c| c == "0001"),  // 00010
+        bad_tree_cluster_names.iter().position(|&c| c == "0001"),  // 00011
+        bad_tree_cluster_names.iter().position(|&c| c == "0010"),  // 00100
+        bad_tree_cluster_names.iter().position(|&c| c == "0010"),  // 00101
+        bad_tree_cluster_names.iter().position(|&c| c == "0011"),  // 00110
+        bad_tree_cluster_names.iter().position(|&c| c == "0011"),  // 00111
+        bad_tree_cluster_names.iter().position(|&c| c == "0101"),  // 01010
+        bad_tree_cluster_names.iter().position(|&c| c == "0101"),  // 01011
+        bad_tree_cluster_names.iter().position(|&c| c == "0111"),  // 01110
+        bad_tree_cluster_names.iter().position(|&c| c == "0111"),  // 01111
+        bad_tree_cluster_names.iter().position(|&c| c == "01111"), // 011110
+        bad_tree_cluster_names.iter().position(|&c| c == "01111"), // 011111
     ];
 
     let mut msa_tree = MSATree::new(
